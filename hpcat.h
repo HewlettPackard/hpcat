@@ -59,6 +59,7 @@ typedef struct
     int             num_accel;
     char            pciaddr[STR_MAX];
     hwloc_bitmap_t  numa_affinity;
+    hwloc_bitmap_t  visible_devices;
 } Accelerators;
 
 typedef struct

@@ -135,10 +135,17 @@ void try_get_accel_info(const char *check_lib, const char *dyn_module, Task *tas
         FATAL("Error: unable to load hpcat_accel_pciaddr_list_str with dyn library %s: %s. Exiting.\n", dyn_module, error);
     pciaddr_list_str(task->accel.pciaddr, STR_MAX);
 
-    int (*numa_list_str)(hwloc_bitmap_t numa) = dlsym(handle, "hpcat_accel_numa_list_str");
+    int (*numa_bitmap)(hwloc_bitmap_t numa) = dlsym(handle, "hpcat_accel_numa_bitmap");
     if ((error = dlerror()) != NULL)
-        FATAL("Error: unable to load hpcat_accel_numa_list_str with dyn library %s: %s. Exiting.\n", dyn_module, error);
-    numa_list_str(task->accel.numa_affinity);
+        FATAL("Error: unable to load hpcat_accel_numa_bitmap with dyn library %s: %s. Exiting.\n", dyn_module, error);
+    if (numa_bitmap(task->accel.numa_affinity) != 0)
+        FATAL("Error: hpcat_accel_numa_bitmap with dyn library %s. Exiting.\n", dyn_module);
+
+    int (*visible_bitmap)(hwloc_bitmap_t numa) = dlsym(handle, "hpcat_accel_visible_bitmap");
+    if ((error = dlerror()) != NULL)
+        FATAL("Error: unable to load hpcat_accel_visible_bitmap with dyn library %s: %s. Exiting.\n", dyn_module, error);
+    if (visible_bitmap(task->accel.visible_devices) != 0)
+        FATAL("Error: hpcat_accel_visible_bitmap with dyn library %s. Exiting.\n", dyn_module);
 
 exit:
     dlclose(handle);
@@ -279,9 +286,14 @@ void hpcat_init(Hpcat *hpcat)
     get_cpu_numa_affinity(&task->affinity);
 
     memset(&task->accel, 0, sizeof(Accelerators));
+
     task->accel.numa_affinity = hwloc_bitmap_alloc();
     if (task->accel.numa_affinity == NULL)
-        FATAL("Error: unable to allocate a hwloc bitmap. Exiting.\n");
+        FATAL("Error: unable to allocate a hwloc bitmap (numa_affinity). Exiting.\n");
+
+    task->accel.visible_devices = hwloc_bitmap_alloc();
+    if (task->accel.visible_devices == NULL)
+        FATAL("Error: unable to allocate a hwloc bitmap (visible_devices). Exiting.\n");
 
     /* Checking if HIP is available, if so fetch information */
     try_get_accel_info("/opt/rocm/lib/libamdhip64.so", "/hpcathip.so", task);

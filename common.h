@@ -29,8 +29,10 @@
 #define HPCAT_COMMON_H
 
 #include <stdio.h>
+#include <hwloc.h>
 
 #define PCI_STR_MAX    32
+#define MAX_DEVICES    32
 
 /**
  * Retrieve NUMA affinity of a device based on its PCIe address
@@ -56,6 +58,49 @@ static inline int get_device_numa_affinity(const int domain, const int bus)
         return -1;
 
     return numa_node;
+}
+
+/**
+ * Convert a list (comma separated values) to a bitmap
+ *
+ * @param   bitmap[out]   Preallocated hwloc bitmap
+ * @param   list_str[in]  String containing a list of values
+ * @return                Success: 0, Error: -1
+ */
+static inline int strlist_to_bitmap(hwloc_bitmap_t bitmap, char *list_str)
+{
+    char *token = strtok(list_str, ",");
+
+    while (token != NULL)
+    {
+        char *endptr;
+
+        long val = strtol(token, &endptr, 10);
+
+        if (*endptr != '\0')
+            return -1;
+
+        if (val > MAX_DEVICES)
+            return -1;
+
+        hwloc_bitmap_set(bitmap, val);
+
+        token = strtok(NULL, ",");
+    }
+
+    return 0;
+}
+
+/**
+ * Set first bits of a bitmap
+ *
+ * @param   bitmap[out]   Preallocated hwloc bitmap
+ * @param   count[in]     Bits to set
+ */
+static inline void set_first_bits_bitmap(hwloc_bitmap_t bitmap, const int count)
+{
+    for (int i = 0; i < count; i++)
+        hwloc_bitmap_set(bitmap, i);
 }
 
 #endif /* HPCAT_COMMON_H */

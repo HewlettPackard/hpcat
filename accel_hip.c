@@ -86,12 +86,31 @@ int hpcat_accel_pciaddr_list_str(char *buff, const int max_buff_size)
 }
 
 /**
+ * Retrive a list of visible devices in a bitmap
+ *
+ * @param   bitmap[out]   Preallocated hwloc bitmap
+ * @return                Success: 0, Error: -1
+ */
+int hpcat_accel_visible_bitmap(hwloc_bitmap_t bitmap)
+{
+    char *visible_env = getenv("ROCR_VISIBLE_DEVICES");
+
+    if (visible_env == NULL)
+    {
+        set_first_bits_bitmap(bitmap, hpcat_accel_count());
+        return 0;
+    }
+    else
+        return strlist_to_bitmap(bitmap, visible_env);
+}
+
+/**
  * Retrieve a bitmap representing NUMA affinities of all detected accelerators
  *
  * @param   numa_affinity[out]  Preallocated hwloc bitmap
  * @return                      Success: 0, Error: -1
  */
-int hpcat_accel_numa_list_str(hwloc_bitmap_t numa_affinity)
+int hpcat_accel_numa_bitmap(hwloc_bitmap_t numa_affinity)
 {
     const int dev_count = hpcat_accel_count();
     if (dev_count <= 0)

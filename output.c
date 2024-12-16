@@ -48,8 +48,9 @@
 #define MPI_W      4
 #define NIC_W     20
 #define NIC_W1    10
-#define ACCEL_W   33
-#define ACCEL_W1  23
+#define ACCEL_W   43
+#define ACCEL_W1   7
+#define ACCEL_W2  23
 #define OMP_W      4
 #define CPU_W     35
 #define CPU_W1    25
@@ -58,9 +59,9 @@
 #define MARGINS_W  2
 #define SPLIT_W    1
 
-#define H_SPLIT  "════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════"
-#define H_DASH   "--------------------------------------------------------------------------------------------------------------------------------"
-#define H_SPACE  "                                                                                                                                "
+#define H_SPLIT  "═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════"
+#define H_DASH   "-------------------------------------------------------------------------------------------------------------------------------------------"
+#define H_SPACE  "                                                                                                                                           "
 #define TITLE    "HPC Affinity Tracker"
 #define VERSION  "v" HPCAT_VERSION " "
 
@@ -126,8 +127,8 @@ static void stdout_titles(Hpcat *handle)
 
     if (settings->enable_accel)
     {
-        ret[0] += sprintf(line[0] + ret[0], " %" STR(ACCEL_W) "s ║", "ACCELERATORS   ");
-        ret[1] += sprintf(line[1] + ret[1], " %" STR(ACCEL_W1) "s │ %" STR(NUMA_W) "s ║", "PCIE ADDR", "NUMA");
+        ret[0] += sprintf(line[0] + ret[0], " %" STR(ACCEL_W) "s ║", "ACCELERATORS               ");
+        ret[1] += sprintf(line[1] + ret[1], " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║", "ID", "PCIE ADDR.", "NUMA");
     }
 
     if (settings->enable_omp)
@@ -141,7 +142,7 @@ static void stdout_titles(Hpcat *handle)
     printf("%s\n%s\n", line[0], line[1]);
 }
 
-static void stdout_split_middle(Hpcat *handle)
+static void stdout_split_middle(Hpcat *handle, const bool high)
 {
     HpcatSettings_t *settings = &handle->settings;
     char line[STR_MAX] = { '\0' };
@@ -151,17 +152,18 @@ static void stdout_split_middle(Hpcat *handle)
                                                (MPI_W + MARGINS_W) * EXT_SZ, H_SPLIT);
 
     if (settings->enable_nic)
-        ret += sprintf(line + ret, "%.*s%s%.*s%s", (NIC_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╪",
+        ret += sprintf(line + ret, "%.*s%s%.*s%s", (NIC_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
                                                    (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╬");
 
     if (settings->enable_accel)
-        ret += sprintf(line + ret, "%.*s%s%.*s%s", (ACCEL_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╪",
-                                                     (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╬");
+        ret += sprintf(line + ret, "%.*s%s%.*s%s%.*s%s", (ACCEL_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
+                                                         (ACCEL_W2 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
+                                                           (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╬");
 
     if (settings->enable_omp)
         ret += sprintf(line + ret, "%.*s%s", (OMP_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╬");
 
-    sprintf(line + ret, "%.*s%s%.*s%s", (CPU_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╪",
+    sprintf(line + ret, "%.*s%s%.*s%s", (CPU_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
                                         (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╣");
     printf("%s\n", line);
 }
@@ -184,8 +186,9 @@ static void stdout_split_end(Hpcat *handle)
                                                    (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╩");
 
     if (settings->enable_accel)
-        ret += sprintf(line + ret, "%.*s%s%.*s%s", (ACCEL_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
-                                                     (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╩");
+        ret += sprintf(line + ret, "%.*s%s%.*s%s%.*s%s", (ACCEL_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
+                                                         (ACCEL_W2 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
+                                                           (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╩");
 
     if (settings->enable_omp)
         ret += sprintf(line + ret, "%.*s%s", (OMP_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╩");
@@ -208,7 +211,7 @@ static void stdout_node(Hpcat *handle)
         ret += sprintf(line + ret, " %" STR(NIC_W1) "s │ %" STR(NUMA_W) "s ║", " ", " ");
 
     if (settings->enable_accel)
-        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(NUMA_W) "s ║", " ", " ");
+        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║", " ", " ", " ");
 
     if (settings->enable_omp)
         ret += sprintf(line + ret, " %" STR(OMP_W) "s ║", " ");
@@ -224,12 +227,16 @@ static void stdout_task(Hpcat *handle)
     char line[STR_MAX] = { '\0' };
     int ret = { 0 };
 
-    char cpu_str[STR_MAX], numa_str[STR_MAX], nic_numa_str[STR_MAX] = { 0 }, accel_numa_str[STR_MAX] = { 0 };
+    char cpu_str[STR_MAX], numa_str[STR_MAX];
+    char nic_numa_str[STR_MAX] = { 0 }, accel_numa_str[STR_MAX] = { 0 }, accel_visible_str[STR_MAX] = { 0 };
     hwloc_bitmap_list_snprintf(cpu_str, STR_MAX - 1, task->affinity.cpu_affinity);
     hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, task->affinity.numa_affinity);
 
     if (task->accel.num_accel > 0)
+    {
         hwloc_bitmap_list_snprintf(accel_numa_str, STR_MAX - 1, task->accel.numa_affinity);
+        hwloc_bitmap_list_snprintf(accel_visible_str, STR_MAX - 1, task->accel.visible_devices);
+    }
 
     if (task->nic.num_nic > 0)
         hwloc_bitmap_list_snprintf(nic_numa_str, STR_MAX - 1, task->nic.numa_affinity);
@@ -240,7 +247,8 @@ static void stdout_task(Hpcat *handle)
         ret += sprintf(line + ret, " %" STR(NIC_W1) "s │ %" STR(NUMA_W) "s ║", task->nic.name, nic_numa_str);
 
     if (settings->enable_accel)
-        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(NUMA_W) "s ║", task->accel.pciaddr, accel_numa_str);
+        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║",
+                       accel_visible_str, task->accel.pciaddr, accel_numa_str);
 
     if (settings->enable_omp)
         ret += sprintf(line + ret, " %.*s ║", OMP_W, H_DASH);
@@ -267,7 +275,7 @@ static void stdout_omp(Hpcat *handle)
         ret += sprintf(line + ret, " %" STR(NIC_W1) "s │ %" STR(NUMA_W) "s ║", " ", " ");
 
     if (settings->enable_accel)
-        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(NUMA_W) "s ║", " ", " ");
+        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║", " ", " ", " ");
 
     for (int i = 0; i < task->num_threads; i++)
     {
@@ -303,7 +311,7 @@ void hpcat_display_stdout(Hpcat *handle)
     /* Node level */
     if (task->is_first_node_rank)
     {
-        stdout_split_middle(handle);
+        stdout_split_middle(handle, true);
         stdout_node(handle);
     }
 
@@ -317,7 +325,7 @@ void hpcat_display_stdout(Hpcat *handle)
     {
         if (handle->settings.enable_banner)
         {
-            stdout_split_middle(handle);
+            stdout_split_middle(handle, false);
             stdout_titles(handle);
             stdout_split_end(handle);
             stdout_footer(handle);
@@ -372,9 +380,12 @@ void hpcat_display_yaml(Hpcat *handle)
     if (task->accel.num_accel > 0)
     {
         char accel_numa_str[STR_MAX] = { 0 };
+        char accel_visible_str[STR_MAX] = { 0 };
         hwloc_bitmap_list_snprintf(accel_numa_str, STR_MAX - 1, task->accel.numa_affinity);
+        hwloc_bitmap_list_snprintf(accel_visible_str, STR_MAX - 1, task->accel.visible_devices);
         printf("%8saccelerators:\n", " ");
-        printf("%10s- pci: \"%s\"\n", " ", task->accel.pciaddr);
+        printf("%10s- visible: \"%s\"\n", " ", accel_visible_str);
+        printf("%10spci: \"%s\"\n", " ", task->accel.pciaddr);
         printf("%12snuma: \"%s\"\n", " ", accel_numa_str);
     }
 
