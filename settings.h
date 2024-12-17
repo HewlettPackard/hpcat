@@ -30,7 +30,7 @@
 
 #include <stdbool.h>
 
-#define HPCAT_VERSION    "0.3"
+#define HPCAT_VERSION    "0.4"
 #define HPCAT_CONTACT    "https://github.com/HewlettPackard/hpcat"
 
 typedef enum OutputType
