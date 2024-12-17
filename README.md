@@ -1,9 +1,9 @@
 HPC Affinity Tracker (HPCAT)
 ============================
 
-This application is designed to display NUMA and CPU affinities within the
-context of HPC applications. It provides reports on MPI tasks, OpenMP
-(automatically enabled if OMP_NUM_THREADS is set), accelerators (automatically
+This application is designed to display NUMA, CPU core and GPU affinities within
+the context of HPC applications. It provides reports on MPI tasks, OpenMP
+(automatically enabled if `OMP_NUM_THREADS` is set), accelerators (automatically
 enabled if GPUs are detected), and NICs (Cray MPICH only, starting from 2 nodes).
 The output format is a human-readable, condensed table, but YAML is also available
 as an option.
