@@ -301,6 +301,11 @@ void hpcat_init(Hpcat *hpcat)
     /* Checking if CUDA is available, if so fetch information */
     try_get_accel_info("/usr/lib64/libnvidia-ml.so", "/hpcatnvml.so", task);
 
+    /* Disable GPUs if no tasks can detect them */
+    int accel_sum = 0;
+    MPI_Allreduce(&task->accel.num_accel, &accel_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    hpcat->settings.enable_accel = (accel_sum > 0);
+
     /* Retrieving OMP CPU affinities and thread IDs */
     #pragma omp parallel
     {
