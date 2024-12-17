@@ -1,18 +1,35 @@
-all:
-	mpicc -O3 -L. -I. -lhwloc -fopenmp hpcat.c output.c settings.c -o hpcat -ldl
+MPICC ?= mpicc
+CC = gcc
+
+ifneq ($(shell which hipconfig 2>/dev/null),)
+  HIP_PATH ?= $(shell hipconfig --path)
+endif
+
+TARGETS := main
+
+ifdef HIP_PATH
+  TARGETS += amd
+endif
+
+ifdef CUDA_HOME
+  TARGETS += nvidia
+endif
+
+all: $(TARGETS)
+
+main:
+	${MPICC} -O3 -L. -I. -lhwloc -fopenmp hpcat.c output.c settings.c -o hpcat -ldl
 
 debug:
-	mpicc -Wall -g -L. -I. -lhwloc -fopenmp hpcat.c output.c settings.c -o hpcat -ldl
+	${MPICC} -Wall -g -L. -I. -lhwloc -fopenmp hpcat.c output.c settings.c -o hpcat -ldl
 
 amd:
-	hipcc -O3 -L. -I. -D__HIP_PLATFORM_AMD__ -Wl,-rpath,'/opt/rocm/lib' accel_hip.c -lhwloc -shared -fPIC -ldl -o hpcathip.so
+	${CC} -O3 -L. -I. -L${HIP_PATH}/lib -I${HIP_PATH}/include -D__HIP_PLATFORM_AMD__ -Wl,-rpath,'${HIP_PATH}/lib' -lamdhip64 -lhwloc -shared -fPIC -ldl accel_hip.c -o hpcathip.so
 
 nvidia:
-	cc -O3 -L. -I. accel_nvml.c -lhwloc -L${NVHPC_CUDA_HOME}/lib64 -Wl,-rpath,'${NVHPC_CUDA_HOME}/lib64' -lnvidia-ml -shared -fPIC -ldl -o hpcatnvml.so
+	${CC} -O3 -L. -I. -L${CUDA_HOME}/lib64 -L${CUDA_HOME}/lib64/stubs -L${CUDA_HOME}/include -Wl,-rpath,'${CUDA_HOME}/lib64' -Wl,-rpath,'${CUDA_HOME}/lib64/stubs' -lnvidia-ml -lhwloc -shared -fPIC -ldl accel_nvml.c -o hpcatnvml.so
 
 clean:
 	@rm -f hpcat
-
-distclean: clean
 	@rm -f hpcathip.so
 	@rm -f hpcatnvml.so

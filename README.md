@@ -19,6 +19,7 @@ Dependencies
 * **NVIDIA NVML** (Optional, for NVIDIA GPUs)
 * **AMD ROCm** (Optional, for AMD GPUs)
 * **hwloc-devel**
+* **MPI**
 
 If hwloc-devel is not installed, it can be re-compiler that way:
 
@@ -35,26 +36,35 @@ If hwloc-devel is not installed, it can be re-compiler that way:
 How to build HPCAT
 ------------------
 
-Main program (no accelerator):
+**HPE Cray Programming Environment (CPE)**
 
-    % module purge
-    % module load PrgEnv-cray
-    % make
+With cray environment:
 
-Dynamic library module for NVIDIA GPUs:
+    module load PrgEnv-cray
+    module load rocm # Optional
+    module load cuda # Optional
+    module unload craype
+    make
 
-    % module purge
-    % module load cuda
-    % make nvidia
+With GNU enironment:
 
-Dynamic library module for AMD GPUs:
-
-    % module purge
-    % module load rocm
-    % make amd
+    module load PrgEnv-gnu
+    module load rocm # Optional
+    module load cuda # Optional
+    module unload craype
+    make
 
 
-Note: the dynamic library modules should be stored in the same directory as the hpcat binary.
+**Without CPE**
+
+Ensure that mpicc is available otherwise set the MPICC environment variable.
+To enable the AMD plugin, ensure the `HIP_PATH` environment variable is set
+To enabble the NVIDIA plugin, ensure the `CUDA_HOME` environment variable is set
+
+    make
+
+
+*Note: the dynamic library modules should be stored in the same directory as the hpcat binary.*
 
 
 How to run HPCAT
