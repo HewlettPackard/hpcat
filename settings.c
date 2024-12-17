@@ -37,10 +37,10 @@ const char *argp_program_bug_address = HPCAT_CONTACT;
 /* Program documentation */
 static char doc[] = "This application is designed to display NUMA and CPU affinities in the context "
                     "of HPC applications. Details about, MPI tasks, OpenMP (automatically enabled if "
-                    "OMP_NUM_THREADS is set), accelerators (automatically enabled if GPUs are allocated "
-                    "via Slurm) and network interfaces (Cray MPICH only, starting from 2 nodes) are "
-                    "reported. The application only shows detected affinities but parameters can be "
-                    "used to force enabling/disabling details. It accepts the following arguments:";
+                    "OMP_NUM_THREADS is set), accelerators (automatically enabled if GPUs are detected) "
+                    "and network interfaces (Cray MPICH only, starting from 2 nodes) are reported. "
+                    "The application only shows detected affinities but parameters can be used to "
+                    "force enabling/disabling details. It accepts the following arguments:";
 
 /* A description of the arguments we accept (in addition to the options) */
 static char args_doc[] = " ";
@@ -49,7 +49,6 @@ static char args_doc[] = " ";
 static struct argp_option options[] =
 {
     {"enable-omp",      11,  0,         0,  "Enable display of OpenMP affinities"},
-    {"enable-accel",    12,  0,         0,  "Enable display of GPU affinities"},
     {"disable-omp",     21,  0,         0,  "Disable display of OpenMP affinities"},
     {"disable-accel",   22,  0,         0,  "Disable display of GPU affinities"},
     {"disable-nic",     23,  0,         0,  "Disable display of Network Interface affinities"},
@@ -67,9 +66,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
     {
         case  11:
             settings->enable_omp = true;
-            break;
-        case  12:
-            settings->enable_accel = true;
             break;
         case  21:
             settings->enable_omp = false;
@@ -109,8 +105,7 @@ void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings
 {
     /* Set defaults and auto-detect */
     hpcat_settings->enable_omp = (getenv("OMP_NUM_THREADS") != NULL);
-    hpcat_settings->enable_accel = (getenv("SLURM_GPUS_ON_NODE") != NULL)  ||
-                                   (getenv("SLURM_GPUS") != NULL);
+    hpcat_settings->enable_accel = true;
     hpcat_settings->enable_nic = true;
     hpcat_settings->enable_banner = true;
     hpcat_settings->output_type = STDOUT;

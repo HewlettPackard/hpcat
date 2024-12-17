@@ -4,9 +4,9 @@ HPC Affinity Tracker (HPCAT)
 This application is designed to display NUMA and CPU affinities within the
 context of HPC applications. It provides reports on MPI tasks, OpenMP
 (automatically enabled if OMP_NUM_THREADS is set), accelerators (automatically
-enabled if GPUs are allocated via Slurm), and NICs (Cray MPICH only, starting
-from 2 nodes). The output format is a human-readable, condensed table, but YAML
-is also available as an option.
+enabled if GPUs are detected), and NICs (Cray MPICH only, starting from 2 nodes).
+The output format is a human-readable, condensed table, but YAML is also available
+as an option.
 
 The application uses dynamic linking modules to retrieve information about
 accelerators, allowing the same binary to be used across different partitions,
@@ -77,7 +77,6 @@ Arguments are :
         --disable-accel        Disable display of GPU affinities
         --disable-nic          Disable display of Network Interface affinities
         --disable-omp          Disable display of OpenMP affinities
-        --enable-accel         Enable display of GPU affinities
         --enable-omp           Enable display of OpenMP affinities
         --no-banner            Do not display header and footer banners
     -y, --yaml                 YAML output
@@ -231,4 +230,3 @@ Future Work
 - [ ] If any issue raised with line ordering in the output, make first MPI rank print all lines (no issue so far)
 - [ ] Support Intel's Ponte Vecchio GPUs
 - [ ] Support (if possible) NIC affinities with other MPI distributions
-- [ ] Find a better way to autodetect GPUs (GPU columns can still be displayed using the appropriate option). Some sites are installing GPU libraries on CPU nodes (checking presence of those libraries is not an option). Checking SLURM environment variables is not enough as some clusters are not using GRES or are relying on another WLM
