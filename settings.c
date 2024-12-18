@@ -53,6 +53,7 @@ static struct argp_option options[] =
     {"disable-accel",   22,  0,         0,  "Disable display of GPU affinities"},
     {"disable-nic",     23,  0,         0,  "Disable display of Network Interface affinities"},
     {"no-banner",       31,  0,         0,  "Do not display header and footer banners"},
+    {"verbose",         'v', 0,         0,  "Make the operation more talkative"},
     {"yaml",            'y', 0,         0,  "YAML output"},
     {0}
 };
@@ -79,6 +80,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         case  31:
             settings->enable_banner = false;
             break;
+        case 'v':
+            settings->enable_verbose = true;
+            break;
         case 'y':
             settings->output_type = YAML;
             break;
@@ -104,11 +108,13 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings)
 {
     /* Set defaults and auto-detect */
-    hpcat_settings->enable_omp = (getenv("OMP_NUM_THREADS") != NULL);
-    hpcat_settings->enable_accel = true;
-    hpcat_settings->enable_nic = true;
-    hpcat_settings->enable_banner = true;
-    hpcat_settings->output_type = STDOUT;
+    hpcat_settings->output_type    = STDOUT;
+
+    hpcat_settings->enable_accel   = true;
+    hpcat_settings->enable_banner  = true;
+    hpcat_settings->enable_nic     = true;
+    hpcat_settings->enable_omp     = (getenv("OMP_NUM_THREADS") != NULL);
+    hpcat_settings->enable_verbose = false;
 
     argp_parse(&argp, argc, argv, 0, 0, hpcat_settings);
 }

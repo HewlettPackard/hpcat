@@ -38,21 +38,29 @@
 #include "settings.h"
 #include "output.h"
 
-#define FATAL(...)                              \
-        do {                                    \
-                fprintf(stderr, __VA_ARGS__);   \
-                fflush(stderr);                 \
-                exit(1);                        \
-        } while(0)
-
 #define MPI_CHECK(x)                                                                       \
         do {                                                                               \
-            const int err=x;                                                               \
-            if (x!=MPI_SUCCESS) {                                                          \
+            const int err = x;                                                             \
+            if (x != MPI_SUCCESS) {                                                        \
                 int len; char estr[MPI_MAX_ERROR_STRING];                                  \
                 MPI_Error_string(err, estr, &len);                                         \
                 FATAL("Error: MPI error %d at %d: %s. Exiting.\n", err, __LINE__, estr);   \
             }                                                                              \
+        } while(0)
+
+#define FATAL(...)                          \
+        do {                                \
+            fprintf(stderr, __VA_ARGS__);   \
+            fflush(stderr);                 \
+            exit(1);                        \
+        } while(0)
+
+#define VERBOSE(hpcat, ...)                                               \
+        do {                                                              \
+            if (hpcat->settings.enable_verbose && hpcat->task.id == 0) {  \
+                fprintf(stderr, __VA_ARGS__);                             \
+                fflush(stderr);                                           \
+            }                                                             \
         } while(0)
 
 hwloc_topology_t topology;
@@ -91,16 +99,21 @@ void get_cpu_numa_affinity(Affinity *affinity)
 /**
  * Retrieve accelerator count, PCIe addresses and NUMA node affinities using dyn library
  *
+ * @param   hpcat[inout]     Application handle
  * @param   check_lib[in]    Path to a library to check if the software stack of a gpu type is available
  * @param   dyn_module[in]   Dynamic library to load if the software stack is available
- * @param   task[out]        Task handle to store information
  */
-void try_get_accel_info(const char *check_lib, const char *dyn_module, Task *task)
+void try_get_accel_info(Hpcat *hpcat, const char *check_lib, const char *dyn_module)
 {
+    Task *task = &hpcat->task;
+
     /* Check if accelerator library is installed */
     void *handle = dlopen(check_lib, RTLD_LAZY);
     if (handle == NULL)
+    {
+        VERBOSE(hpcat, "Verbose: %s not found in the search path. Disabling %s.\n", check_lib, dyn_module);
         return;
+    }
 
     dlclose(handle);
 
@@ -112,12 +125,16 @@ void try_get_accel_info(const char *check_lib, const char *dyn_module, Task *tas
     /* Get full path where the module is supposed to be stored */
     char dynlib_path[PATH_MAX];
     strncpy(dynlib_path, lib_path, PATH_MAX - 1);
-    strncat(dynlib_path, dyn_module, PATH_MAX - 1 - strlen(dyn_module));
+    strncat(dynlib_path, "/", PATH_MAX - 2);
+    strncat(dynlib_path, dyn_module, PATH_MAX - 2 - strlen(dyn_module));
 
     /* Load dynamic module */
     handle = dlopen(dynlib_path, RTLD_LAZY);
     if (handle == NULL)
+    {
+        VERBOSE(hpcat, "Verbose: missing %s module.\n", dynlib_path);
         return;
+    }
 
     /* Retrieve accelerator information with the dynamic library */
     char *error;
@@ -146,6 +163,8 @@ void try_get_accel_info(const char *check_lib, const char *dyn_module, Task *tas
         FATAL("Error: unable to load hpcat_accel_visible_bitmap with dyn library %s: %s. Exiting.\n", dyn_module, error);
     if (visible_bitmap(task->accel.visible_devices) != 0)
         FATAL("Error: hpcat_accel_visible_bitmap with dyn library %s. Exiting.\n", dyn_module);
+
+    VERBOSE(hpcat, "Verbose: %s module enabled.\n", dyn_module);
 
 exit:
     dlclose(handle);
@@ -255,7 +274,7 @@ void MPI_Finalize_noverbose(void)
 /**
  * Retrieve MPI, OMP and accelerator based information
  *
- * @param   hpcat    Application handle
+ * @param   hpcat[inout]    Application handle
  */
 void hpcat_init(Hpcat *hpcat)
 {
@@ -296,15 +315,17 @@ void hpcat_init(Hpcat *hpcat)
         FATAL("Error: unable to allocate a hwloc bitmap (visible_devices). Exiting.\n");
 
     /* Checking if HIP is available, if so fetch information */
-    try_get_accel_info("libamdhip64.so", "/hpcathip.so", task);
+    try_get_accel_info(hpcat, "libamdhip64.so", "hpcathip.so");
 
     /* Checking if CUDA is available, if so fetch information */
-    try_get_accel_info("libnvidia-ml.so", "/hpcatnvml.so", task);
+    try_get_accel_info(hpcat, "libnvidia-ml.so", "hpcatnvml.so");
 
     /* Disable GPUs if no tasks can detect them */
     int accel_sum = 0;
     MPI_Allreduce(&task->accel.num_accel, &accel_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     hpcat->settings.enable_accel = (accel_sum > 0);
+
+    VERBOSE(hpcat, "Verbose: %d visible accelerators (sum accross all tasks).\n", accel_sum);
 
     /* Retrieving OMP CPU affinities and thread IDs */
     #pragma omp parallel

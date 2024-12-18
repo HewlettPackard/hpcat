@@ -79,6 +79,7 @@ Arguments are :
         --disable-omp          Disable display of OpenMP affinities
         --enable-omp           Enable display of OpenMP affinities
         --no-banner            Do not display header and footer banners
+    -v, --verbose              Make the operation more talkative
     -y, --yaml                 YAML output
     -?, --help                 Give this help list
         --usage                Give a short usage message
