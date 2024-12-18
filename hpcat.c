@@ -296,10 +296,10 @@ void hpcat_init(Hpcat *hpcat)
         FATAL("Error: unable to allocate a hwloc bitmap (visible_devices). Exiting.\n");
 
     /* Checking if HIP is available, if so fetch information */
-    try_get_accel_info("/opt/rocm/lib/libamdhip64.so", "/hpcathip.so", task);
+    try_get_accel_info("libamdhip64.so", "/hpcathip.so", task);
 
     /* Checking if CUDA is available, if so fetch information */
-    try_get_accel_info("/usr/lib64/libnvidia-ml.so", "/hpcatnvml.so", task);
+    try_get_accel_info("libnvidia-ml.so", "/hpcatnvml.so", task);
 
     /* Disable GPUs if no tasks can detect them */
     int accel_sum = 0;
