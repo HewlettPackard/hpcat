@@ -52,8 +52,9 @@
 #define ACCEL_W1   7
 #define ACCEL_W2  23
 #define OMP_W      4
-#define CPU_W     35
-#define CPU_W1    25
+#define CPU_W     46
+#define CPU_W1    20
+#define CPU_W2    13
 #define NUMA_W     7
 
 #define MARGINS_W  2
@@ -137,8 +138,8 @@ static void stdout_titles(Hpcat *handle)
         ret[1] += sprintf(line[1] + ret[1], " %" STR(OMP_W) "s ║", "ID");
     }
 
-    sprintf(line[0] + ret[0], " %" STR(CPU_W) "s ║", "CPU       ");
-    sprintf(line[1] + ret[1], " %" STR(CPU_W1) "s │ %" STR(NUMA_W) "s ║", "CORE ID", "NUMA");
+    sprintf(line[0] + ret[0], " %" STR(CPU_W) "s ║", "CPU                    ");
+    sprintf(line[1] + ret[1], " %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║", "LOGICAL PROC", "PHYSICAL CORE", "NUMA");
     printf("%s\n%s\n", line[0], line[1]);
 }
 
@@ -163,8 +164,9 @@ static void stdout_split_middle(Hpcat *handle, const bool high)
     if (settings->enable_omp)
         ret += sprintf(line + ret, "%.*s%s", (OMP_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╬");
 
-    sprintf(line + ret, "%.*s%s%.*s%s", (CPU_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
-                                        (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╣");
+    sprintf(line + ret, "%.*s%s%.*s%s%.*s%s", (CPU_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
+                                              (CPU_W2 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
+                                              (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╣");
     printf("%s\n", line);
 }
 
@@ -193,8 +195,9 @@ static void stdout_split_end(Hpcat *handle)
     if (settings->enable_omp)
         ret += sprintf(line + ret, "%.*s%s", (OMP_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╩");
 
-    sprintf(line + ret, "%.*s%s%.*s%s", (CPU_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
-                                        (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╝");
+    sprintf(line + ret, "%.*s%s%.*s%s%.*s%s", (CPU_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
+                                              (CPU_W2 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
+                                              (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╝");
     printf("%s\n", line);
 }
 
@@ -216,7 +219,7 @@ static void stdout_node(Hpcat *handle)
     if (settings->enable_omp)
         ret += sprintf(line + ret, " %" STR(OMP_W) "s ║", " ");
 
-    sprintf(line + ret, " %" STR(CPU_W1) "s │ %" STR(NUMA_W) "s ║", " ", " ");
+    sprintf(line + ret, " %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║", " ", " ", " ");
     printf("%s\n", line);
 }
 
@@ -227,9 +230,10 @@ static void stdout_task(Hpcat *handle)
     char line[STR_MAX] = { '\0' };
     int ret = { 0 };
 
-    char cpu_str[STR_MAX], numa_str[STR_MAX];
+    char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
     char nic_numa_str[STR_MAX] = { 0 }, accel_numa_str[STR_MAX] = { 0 }, accel_visible_str[STR_MAX] = { 0 };
-    hwloc_bitmap_list_snprintf(cpu_str, STR_MAX - 1, task->affinity.cpu_affinity);
+    hwloc_bitmap_list_snprintf(hw_thread_str, STR_MAX - 1, task->affinity.hw_thread_affinity);
+    hwloc_bitmap_list_snprintf(core_str, STR_MAX - 1, task->affinity.core_affinity);
     hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, task->affinity.numa_affinity);
 
     if (task->accel.num_accel > 0)
@@ -253,7 +257,7 @@ static void stdout_task(Hpcat *handle)
     if (settings->enable_omp)
         ret += sprintf(line + ret, " %.*s ║", OMP_W, H_DASH);
 
-    sprintf(line + ret, " %" STR(CPU_W1) "s │ %" STR(NUMA_W) "s ║", cpu_str, numa_str);
+    sprintf(line + ret, " %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║", hw_thread_str, core_str, numa_str);
     printf("%s\n", line);
 }
 
@@ -264,7 +268,7 @@ static void stdout_omp(Hpcat *handle)
     char line[STR_MAX] = { '\0' };
     int ret = { 0 };
 
-    char cpu_str[STR_MAX], numa_str[STR_MAX];
+    char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
 
     if (!settings->enable_omp)
         return;
@@ -280,9 +284,10 @@ static void stdout_omp(Hpcat *handle)
     for (int i = 0; i < task->num_threads; i++)
     {
         Thread *thread = &task->threads[i];
-        hwloc_bitmap_list_snprintf(cpu_str, STR_MAX - 1, thread->affinity.cpu_affinity);
+        hwloc_bitmap_list_snprintf(hw_thread_str, STR_MAX - 1, thread->affinity.hw_thread_affinity);
+        hwloc_bitmap_list_snprintf(core_str, STR_MAX - 1, thread->affinity.core_affinity);
         hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, thread->affinity.numa_affinity);
-        printf("%s %" STR(OMP_W) "d ║ %" STR(CPU_W1) "s │ %" STR(NUMA_W) "s ║\n", line, thread->id, cpu_str, numa_str);
+        printf("%s %" STR(OMP_W) "d ║ %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║\n", line, thread->id, hw_thread_str, core_str, numa_str);
     }
 }
 
@@ -345,9 +350,10 @@ void hpcat_display_stdout(Hpcat *handle)
 void hpcat_display_yaml(Hpcat *handle)
 {
     Task *task = &handle->task;
-    char cpu_str[STR_MAX], numa_str[STR_MAX];
+    char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
 
-    hwloc_bitmap_list_snprintf(cpu_str, STR_MAX - 1, task->affinity.cpu_affinity);
+    hwloc_bitmap_list_snprintf(hw_thread_str, STR_MAX - 1, task->affinity.hw_thread_affinity);
+    hwloc_bitmap_list_snprintf(core_str, STR_MAX - 1, task->affinity.core_affinity);
     hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, task->affinity.numa_affinity);
 
     if (task->is_first_rank)
@@ -365,7 +371,8 @@ void hpcat_display_yaml(Hpcat *handle)
 
     /* Task level */
     printf("%6s- rank: %d\n", " ", task->id);
-    printf("%8scpu: \"%s\"\n", " ", cpu_str);
+    printf("%8slogical_proc: \"%s\"\n", " ", hw_thread_str);
+    printf("%8sphysical_core: \"%s\"\n", " ", core_str);
     printf("%8snuma: \"%s\"\n", " ", numa_str);
 
     if (task->nic.num_nic > 0)
@@ -396,11 +403,13 @@ void hpcat_display_yaml(Hpcat *handle)
         for (int i = 0; i < task->num_threads; i++)
         {
             Thread *thread = &task->threads[i];
-            hwloc_bitmap_list_snprintf(cpu_str, STR_MAX - 1, thread->affinity.cpu_affinity);
+            hwloc_bitmap_list_snprintf(hw_thread_str, STR_MAX - 1, thread->affinity.hw_thread_affinity);
+            hwloc_bitmap_list_snprintf(core_str, STR_MAX - 1, thread->affinity.core_affinity);
             hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, thread->affinity.numa_affinity);
 
             printf("%10s- thread: %d\n", " ", thread->id);
-            printf("%12scpu: \"%s\"\n", " ", cpu_str);
+            printf("%12slogical_proc: \"%s\"\n", " ", hw_thread_str);
+            printf("%12sphysical_core: \"%s\"\n", " ", core_str);
             printf("%12snuma: \"%s\"\n", " ", numa_str);
         }
     }

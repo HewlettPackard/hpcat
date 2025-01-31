@@ -38,7 +38,8 @@
 typedef struct
 {
     hwloc_bitmap_t  numa_affinity;
-    hwloc_cpuset_t  cpu_affinity;
+    hwloc_cpuset_t  hw_thread_affinity;
+    hwloc_cpuset_t  core_affinity;
 } Affinity;
 
 typedef struct

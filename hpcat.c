@@ -72,26 +72,41 @@ hwloc_topology_t topology;
  */
 void get_cpu_numa_affinity(Affinity *affinity)
 {
-    /* Retrieving CPU affinity */
-    affinity->cpu_affinity = hwloc_bitmap_alloc();
-    if (affinity->cpu_affinity == NULL)
-        FATAL("Error: unable to allocate a hwloc bitmap for CPU affinity. Exiting.\n");
+    /* Retrieving CPU (hardware thread) affinity */
+    affinity->hw_thread_affinity = hwloc_bitmap_alloc();
+    if (affinity->hw_thread_affinity == NULL)
+        FATAL("Error: unable to allocate a hwloc bitmap for CPU (hardware thread) affinity. Exiting.\n");
 
-    if (hwloc_get_cpubind(topology, affinity->cpu_affinity,  HWLOC_CPUBIND_THREAD) != 0)
+    if (hwloc_get_cpubind(topology, affinity->hw_thread_affinity,  HWLOC_CPUBIND_THREAD) != 0)
         FATAL("Error: unable to retrieve CPU binding with hwloc: %s. Exiting.\n", strerror(errno));
+
+    /* Retrieving CPU core (first hardware thread) affinity */
+    affinity->core_affinity = hwloc_bitmap_alloc();
+    if (affinity->core_affinity == NULL)
+        FATAL("Error: unable to allocate a hwloc bitmap for CPU core affinity. Exiting.\n");
+
+    const int depth_core = hwloc_get_type_depth(topology, HWLOC_OBJ_CORE);
+    const int num_cores = hwloc_get_nbobjs_by_depth(topology, depth_core);
+
+    for (int i = 0; i < num_cores; i++)
+    {
+        hwloc_obj_t core = hwloc_get_obj_by_depth(topology, depth_core, i);
+        if (hwloc_bitmap_intersects(affinity->hw_thread_affinity, core->cpuset))
+            hwloc_bitmap_set(affinity->core_affinity, core->first_child->os_index);
+    }
 
     /* Retrieving NUMA affinity */
     affinity->numa_affinity = hwloc_bitmap_alloc();
     if (affinity->numa_affinity == NULL)
         FATAL("Error: unable to allocate a hwloc bitmap for NUMA affinity. Exiting.\n");
 
-    const int depth = hwloc_get_type_depth(topology, HWLOC_OBJ_NUMANODE);
-    const int num_nodes = hwloc_get_nbobjs_by_depth(topology, depth);
+    const int depth_node = hwloc_get_type_depth(topology, HWLOC_OBJ_NUMANODE);
+    const int num_nodes = hwloc_get_nbobjs_by_depth(topology, depth_node);
 
     for (int i = 0; i < num_nodes; i++)
     {
-        hwloc_obj_t node = hwloc_get_obj_by_depth(topology, depth, i);
-        if (hwloc_bitmap_intersects(affinity->cpu_affinity, node->cpuset))
+        hwloc_obj_t node = hwloc_get_obj_by_depth(topology, depth_node, i);
+        if (hwloc_bitmap_intersects(affinity->hw_thread_affinity, node->cpuset))
             hwloc_bitmap_set(affinity->numa_affinity, i);
     }
 }
