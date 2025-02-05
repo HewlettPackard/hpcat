@@ -113,8 +113,10 @@ void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings
     hpcat_settings->enable_accel   = true;
     hpcat_settings->enable_banner  = true;
     hpcat_settings->enable_nic     = true;
-    hpcat_settings->enable_omp     = (getenv("OMP_NUM_THREADS") != NULL);
     hpcat_settings->enable_verbose = false;
+
+    char *omp_env = getenv("OMP_NUM_THREADS");
+    hpcat_settings->enable_omp = (omp_env != NULL) && (atoi(omp_env) > 1);
 
     argp_parse(&argp, argc, argv, 0, 0, hpcat_settings);
 }
