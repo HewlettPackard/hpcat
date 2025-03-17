@@ -35,6 +35,7 @@
 #include <libgen.h>
 
 #include "hpcat.h"
+#include "common.h"
 #include "settings.h"
 #include "output.h"
 
@@ -48,13 +49,6 @@
             }                                                                              \
         } while(0)
 
-#define FATAL(...)                          \
-        do {                                \
-            fprintf(stderr, __VA_ARGS__);   \
-            fflush(stderr);                 \
-            exit(1);                        \
-        } while(0)
-
 #define VERBOSE(hpcat, ...)                                               \
         do {                                                              \
             if (hpcat->settings.enable_verbose && hpcat->task.id == 0) {  \
@@ -65,6 +59,32 @@
 
 hwloc_topology_t topology;
 
+static void serialize_bitmap(Bitmap *bitmap, hwloc_bitmap_t tmp)
+{
+    bitmap->num_ulongs = hwloc_bitmap_nr_ulongs(tmp);
+    if (bitmap->num_ulongs <= 0)
+        FATAL("Error: unable to convert bitmap to ulongs. Exiting.\n");
+
+    if (bitmap->num_ulongs > BITMAP_ULONGS_MAX)
+        FATAL("Error: bitmap size is too small. Exiting.\n");
+
+    if (hwloc_bitmap_to_ulongs(tmp, bitmap->num_ulongs, bitmap->ulongs) != 0)
+        FATAL("Error: unable to convert bitmap to ulongs. Exiting.\n");
+}
+
+static void serialize_cpu_bitmap(CPUBitmap *bitmap, hwloc_bitmap_t tmp)
+{
+    bitmap->num_ulongs = hwloc_bitmap_nr_ulongs(tmp);
+    if (bitmap->num_ulongs <= 0)
+        FATAL("Error: unable to convert cpu bitmap to ulongs. Exiting.\n");
+
+    if (bitmap->num_ulongs > BITMAP_CPU_ULONGS_MAX)
+        FATAL("Error: cpu bitmap size is too small. Exiting.\n");
+
+    if (hwloc_bitmap_to_ulongs(tmp, bitmap->num_ulongs, bitmap->ulongs) != 0)
+        FATAL("Error: unable to convert cpu bitmap to ulongs. Exiting.\n");
+}
+
 /**
  * Retrieve CPU core and NUMA node affinities
  *
@@ -73,16 +93,17 @@ hwloc_topology_t topology;
 void get_cpu_numa_affinity(Affinity *affinity)
 {
     /* Retrieving CPU (hardware thread) affinity */
-    affinity->hw_thread_affinity = hwloc_bitmap_alloc();
-    if (affinity->hw_thread_affinity == NULL)
+    hwloc_bitmap_t hw_thread_affinity = hwloc_bitmap_alloc();
+    if (hw_thread_affinity == NULL)
         FATAL("Error: unable to allocate a hwloc bitmap for CPU (hardware thread) affinity. Exiting.\n");
 
-    if (hwloc_get_cpubind(topology, affinity->hw_thread_affinity,  HWLOC_CPUBIND_THREAD) != 0)
-        FATAL("Error: unable to retrieve CPU binding with hwloc: %s. Exiting.\n", strerror(errno));
+    if (hwloc_get_cpubind(topology, hw_thread_affinity,  HWLOC_CPUBIND_THREAD) != 0)
+       FATAL("Error: unable to retrieve CPU binding with hwloc: %s. Exiting.\n", strerror(errno));
 
     /* Retrieving CPU core (first hardware thread) affinity */
-    affinity->core_affinity = hwloc_bitmap_alloc();
-    if (affinity->core_affinity == NULL)
+    hwloc_bitmap_t core_affinity = hwloc_bitmap_alloc();
+    core_affinity = hwloc_bitmap_alloc();
+    if (core_affinity == NULL)
         FATAL("Error: unable to allocate a hwloc bitmap for CPU core affinity. Exiting.\n");
 
     const int depth_core = hwloc_get_type_depth(topology, HWLOC_OBJ_CORE);
@@ -91,13 +112,13 @@ void get_cpu_numa_affinity(Affinity *affinity)
     for (int i = 0; i < num_cores; i++)
     {
         hwloc_obj_t core = hwloc_get_obj_by_depth(topology, depth_core, i);
-        if (hwloc_bitmap_intersects(affinity->hw_thread_affinity, core->cpuset))
-            hwloc_bitmap_set(affinity->core_affinity, core->first_child->os_index);
+        if (hwloc_bitmap_intersects(hw_thread_affinity, core->cpuset))
+            hwloc_bitmap_set(core_affinity, core->first_child->os_index);
     }
 
     /* Retrieving NUMA affinity */
-    affinity->numa_affinity = hwloc_bitmap_alloc();
-    if (affinity->numa_affinity == NULL)
+    hwloc_bitmap_t numa_affinity = hwloc_bitmap_alloc();
+    if (numa_affinity == NULL)
         FATAL("Error: unable to allocate a hwloc bitmap for NUMA affinity. Exiting.\n");
 
     const int depth_node = hwloc_get_type_depth(topology, HWLOC_OBJ_NUMANODE);
@@ -106,9 +127,19 @@ void get_cpu_numa_affinity(Affinity *affinity)
     for (int i = 0; i < num_nodes; i++)
     {
         hwloc_obj_t node = hwloc_get_obj_by_depth(topology, depth_node, i);
-        if (hwloc_bitmap_intersects(affinity->hw_thread_affinity, node->cpuset))
-            hwloc_bitmap_set(affinity->numa_affinity, i);
+        if (hwloc_bitmap_intersects(hw_thread_affinity, node->cpuset))
+            hwloc_bitmap_set(numa_affinity, i);
     }
+
+    /* Serialize bitmaps */
+    serialize_cpu_bitmap(&affinity->hw_thread_affinity, hw_thread_affinity);
+    serialize_cpu_bitmap(&affinity->core_affinity, core_affinity);
+    serialize_bitmap(&affinity->numa_affinity, numa_affinity);
+
+    /* Clean up */
+    hwloc_bitmap_free(hw_thread_affinity);
+    hwloc_bitmap_free(core_affinity);
+    hwloc_bitmap_free(numa_affinity);
 }
 
 /**
@@ -151,6 +182,15 @@ void try_get_accel_info(Hpcat *hpcat, const char *check_lib, const char *dyn_mod
         return;
     }
 
+    /* Allocate temporary bitmaps */
+    hwloc_bitmap_t numa_affinity = hwloc_bitmap_alloc();
+    if (numa_affinity == NULL)
+        FATAL("Error: unable to allocate a hwloc bitmap (numa_affinity). Exiting.\n");
+
+    hwloc_bitmap_t visible_devices = hwloc_bitmap_alloc();
+    if (visible_devices == NULL)
+        FATAL("Error: unable to allocate a hwloc bitmap (visible_devices). Exiting.\n");
+
     /* Retrieve accelerator information with the dynamic library */
     char *error;
     int (*device_count)(void) = dlsym(handle, "hpcat_accel_count");
@@ -160,29 +200,37 @@ void try_get_accel_info(Hpcat *hpcat, const char *check_lib, const char *dyn_mod
     const int count = device_count();
     if (count <= 0)
         goto exit;
-    task->accel.num_accel += count;
+
+    Accelerators *accel = &task->accel;
+    accel->num_accel += count;
 
     int (*pciaddr_list_str)(char *buff, const int max_buff_size) = dlsym(handle, "hpcat_accel_pciaddr_list_str");
     if ((error = dlerror()) != NULL)
         FATAL("Error: unable to load hpcat_accel_pciaddr_list_str with dyn library %s: %s. Exiting.\n", dyn_module, error);
-    pciaddr_list_str(task->accel.pciaddr, STR_MAX);
+    pciaddr_list_str(accel->pciaddr, STR_MAX);
 
     int (*numa_bitmap)(hwloc_bitmap_t numa) = dlsym(handle, "hpcat_accel_numa_bitmap");
     if ((error = dlerror()) != NULL)
         FATAL("Error: unable to load hpcat_accel_numa_bitmap with dyn library %s: %s. Exiting.\n", dyn_module, error);
-    if (numa_bitmap(task->accel.numa_affinity) != 0)
+    if (numa_bitmap(numa_affinity) != 0)
         FATAL("Error: hpcat_accel_numa_bitmap with dyn library %s. Exiting.\n", dyn_module);
 
     int (*visible_bitmap)(hwloc_bitmap_t numa) = dlsym(handle, "hpcat_accel_visible_bitmap");
     if ((error = dlerror()) != NULL)
         FATAL("Error: unable to load hpcat_accel_visible_bitmap with dyn library %s: %s. Exiting.\n", dyn_module, error);
-    if (visible_bitmap(task->accel.visible_devices) != 0)
+    if (visible_bitmap(visible_devices) != 0)
         FATAL("Error: hpcat_accel_visible_bitmap with dyn library %s. Exiting.\n", dyn_module);
+
+    /* Serialize bitmaps */
+    serialize_bitmap(&accel->numa_affinity, numa_affinity);
+    serialize_bitmap(&accel->visible_devices, visible_devices);
 
     VERBOSE(hpcat, "Verbose: %s module enabled.\n", dyn_module);
 
 exit:
     dlclose(handle);
+    hwloc_bitmap_free(numa_affinity);
+    hwloc_bitmap_free(visible_devices);
 }
 
 /**
@@ -250,10 +298,7 @@ void MPI_Init_verbose(Task *task, int *nargs, char **args[])
         char numa_str[NIC_STR_MAX] = { 0 };
         const char *numa_pos = parse_buffer(numa_str, NIC_STR_MAX, nic_pos, "numa_node=");
         if (numa_pos != NULL)
-        {
-            task->nic.numa_affinity = hwloc_bitmap_alloc();
-            hwloc_bitmap_set(task->nic.numa_affinity, atoi(numa_str));
-        }
+            task->nic.numa_affinity = (char)atoi(numa_str);
         task->nic.num_nic = 1;
     }
 
@@ -321,14 +366,6 @@ void hpcat_init(Hpcat *hpcat)
 
     memset(&task->accel, 0, sizeof(Accelerators));
 
-    task->accel.numa_affinity = hwloc_bitmap_alloc();
-    if (task->accel.numa_affinity == NULL)
-        FATAL("Error: unable to allocate a hwloc bitmap (numa_affinity). Exiting.\n");
-
-    task->accel.visible_devices = hwloc_bitmap_alloc();
-    if (task->accel.visible_devices == NULL)
-        FATAL("Error: unable to allocate a hwloc bitmap (visible_devices). Exiting.\n");
-
     /* Checking if HIP is available, if so fetch information */
     try_get_accel_info(hpcat, "libamdhip64.so", "hpcathip.so");
 
@@ -350,7 +387,8 @@ void hpcat_init(Hpcat *hpcat)
         #pragma omp single
         {
             task->num_threads = omp_get_num_threads();
-            task->threads = (Thread*)malloc(task->num_threads * sizeof(Thread));
+            if (task->num_threads > THREADS_MAX)
+                FATAL("Error: THREADS_MAX lower than amount of threads. Exiting.\n");
         }
 
         Thread *thread = &task->threads[thread_id];

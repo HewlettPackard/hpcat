@@ -32,35 +32,50 @@
 #include <mpi.h>
 #include "settings.h"
 
-#define STR_MAX      4096
-#define NIC_STR_MAX    32
+#define STR_MAX              4096
+#define NIC_STR_MAX            32
+#define BITMAP_ULONGS_MAX       1   /* up to 64 elements */
+#define BITMAP_CPU_ULONGS_MAX  32   /* up du 2K hardware threads */
+#define THREADS_MAX           (BITMAP_CPU_ULONGS_MAX * 64)
 
 typedef struct
 {
-    hwloc_bitmap_t  numa_affinity;
-    hwloc_cpuset_t  hw_thread_affinity;
-    hwloc_cpuset_t  core_affinity;
+    int           num_ulongs;
+    unsigned long ulongs[BITMAP_CPU_ULONGS_MAX];
+} CPUBitmap;
+
+typedef struct
+{
+    int           num_ulongs;
+    unsigned long ulongs[BITMAP_ULONGS_MAX];
+} Bitmap;
+
+typedef struct
+{
+    Bitmap    numa_affinity;
+    CPUBitmap hw_thread_affinity;
+    CPUBitmap core_affinity;
 } Affinity;
 
 typedef struct
 {
-    int       id;
-    Affinity  affinity;
+    int      id;
+    Affinity affinity;
 } Thread;
 
 typedef struct
 {
-    int             num_nic;
-    char            name[NIC_STR_MAX];
-    hwloc_bitmap_t  numa_affinity;
+    int  num_nic;
+    char name[NIC_STR_MAX];
+    char numa_affinity;
 } Nic;
 
 typedef struct
 {
-    int             num_accel;
-    char            pciaddr[STR_MAX];
-    hwloc_bitmap_t  numa_affinity;
-    hwloc_bitmap_t  visible_devices;
+    int    num_accel;
+    char   pciaddr[STR_MAX];
+    Bitmap numa_affinity;
+    Bitmap visible_devices;
 } Accelerators;
 
 typedef struct
@@ -73,7 +88,7 @@ typedef struct
     char          hostname[HOST_NAME_MAX];
     Nic           nic;
     int           num_threads;
-    Thread       *threads;
+    Thread        threads[THREADS_MAX];
     Accelerators  accel;
 } Task;
 

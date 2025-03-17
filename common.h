@@ -31,6 +31,14 @@
 #include <stdio.h>
 #include <hwloc.h>
 
+#define FATAL(...)                          \
+        do {                                \
+            fprintf(stderr, __VA_ARGS__);   \
+            fflush(stderr);                 \
+            exit(1);                        \
+        } while(0)
+
+
 #define PCI_STR_MAX    32
 #define MAX_DEVICES    32
 

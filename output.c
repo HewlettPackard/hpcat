@@ -33,6 +33,7 @@
 #include <stdlib.h>
 
 #include "output.h"
+#include "common.h"
 #include "settings.h"
 
 #define QUOTE(name) #name
@@ -69,7 +70,7 @@
 static void stdout_header(Hpcat *handle)
 {
     HpcatSettings_t *settings = &handle->settings;
-    char line[3][STR_MAX] = { '\0' };
+    char line[3][STR_MAX] = { {'\0'} };
     int ret = { 0 };
     int all_col = (HOST_W + MPI_W + CPU_W + 3 * MARGINS_W + 2 * SPLIT_W);
 
@@ -114,7 +115,7 @@ static void stdout_header(Hpcat *handle)
 static void stdout_titles(Hpcat *handle)
 {
     HpcatSettings_t *settings = &handle->settings;
-    char line[2][STR_MAX] = { '\0' };
+    char line[2][STR_MAX] = { {'\0'} };
     int ret[2] = { 0 };
 
     ret[0] += sprintf(line[0] + ret[0], "║ %" STR(HOST_W) "s ║ %" STR(MPI_W) "s ║", "HOST", "MPI");
@@ -223,6 +224,13 @@ static void stdout_node(Hpcat *handle)
     printf("%s\n", line);
 }
 
+static void bitmap_to_str(char *str, Bitmap *bitmap, hwloc_bitmap_t tmp)
+{
+    hwloc_bitmap_zero(tmp);
+    hwloc_bitmap_from_ulongs(tmp, bitmap->num_ulongs, bitmap->ulongs);
+    hwloc_bitmap_list_snprintf(str, STR_MAX - 1, tmp);
+}
+
 static void stdout_task(Hpcat *handle)
 {
     HpcatSettings_t *settings = &handle->settings;
@@ -232,18 +240,25 @@ static void stdout_task(Hpcat *handle)
 
     char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
     char nic_numa_str[STR_MAX] = { 0 }, accel_numa_str[STR_MAX] = { 0 }, accel_visible_str[STR_MAX] = { 0 };
-    hwloc_bitmap_list_snprintf(hw_thread_str, STR_MAX - 1, task->affinity.hw_thread_affinity);
-    hwloc_bitmap_list_snprintf(core_str, STR_MAX - 1, task->affinity.core_affinity);
-    hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, task->affinity.numa_affinity);
+
+    hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
+    if (bitmap == NULL)
+        FATAL("Error: Unable to allocate temporary bitmap. Exiting.\n");
+
+    bitmap_to_str(hw_thread_str, (Bitmap*)&task->affinity.hw_thread_affinity, bitmap);
+    bitmap_to_str(core_str, (Bitmap*)&task->affinity.core_affinity, bitmap);
+    bitmap_to_str(numa_str, &task->affinity.numa_affinity, bitmap);
 
     if (task->accel.num_accel > 0)
     {
-        hwloc_bitmap_list_snprintf(accel_numa_str, STR_MAX - 1, task->accel.numa_affinity);
-        hwloc_bitmap_list_snprintf(accel_visible_str, STR_MAX - 1, task->accel.visible_devices);
+        bitmap_to_str(accel_numa_str, &task->accel.numa_affinity, bitmap);
+        bitmap_to_str(accel_visible_str, &task->accel.visible_devices, bitmap);
     }
 
+    hwloc_bitmap_free(bitmap);
+
     if (task->nic.num_nic > 0)
-        hwloc_bitmap_list_snprintf(nic_numa_str, STR_MAX - 1, task->nic.numa_affinity);
+        sprintf(nic_numa_str, "%d", task->nic.numa_affinity);
 
     ret += sprintf(line + ret, "║ %" STR(HOST_W) "s ║ %" STR(MPI_W) "d ║", " ", task->id);
 
@@ -281,14 +296,22 @@ static void stdout_omp(Hpcat *handle)
     if (settings->enable_accel)
         ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║", " ", " ", " ");
 
+    hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
+    if (bitmap == NULL)
+        FATAL("Error: Unable to allocate temporary bitmap. Exiting.\n");
+
     for (int i = 0; i < task->num_threads; i++)
     {
         Thread *thread = &task->threads[i];
-        hwloc_bitmap_list_snprintf(hw_thread_str, STR_MAX - 1, thread->affinity.hw_thread_affinity);
-        hwloc_bitmap_list_snprintf(core_str, STR_MAX - 1, thread->affinity.core_affinity);
-        hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, thread->affinity.numa_affinity);
+
+        bitmap_to_str(hw_thread_str, (Bitmap*)&task->affinity.hw_thread_affinity, bitmap);
+        bitmap_to_str(core_str, (Bitmap*)&task->affinity.core_affinity, bitmap);
+        bitmap_to_str(numa_str, &task->affinity.numa_affinity, bitmap);
+
         printf("%s %" STR(OMP_W) "d ║ %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║\n", line, thread->id, hw_thread_str, core_str, numa_str);
     }
+
+    hwloc_bitmap_free(bitmap);
 }
 
 static void stdout_footer(Hpcat *handle)
@@ -352,9 +375,13 @@ void hpcat_display_yaml(Hpcat *handle)
     Task *task = &handle->task;
     char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
 
-    hwloc_bitmap_list_snprintf(hw_thread_str, STR_MAX - 1, task->affinity.hw_thread_affinity);
-    hwloc_bitmap_list_snprintf(core_str, STR_MAX - 1, task->affinity.core_affinity);
-    hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, task->affinity.numa_affinity);
+    hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
+    if (bitmap == NULL)
+        FATAL("Error: Unable to allocate temporary bitmap. Exiting.\n");
+
+    bitmap_to_str(hw_thread_str, (Bitmap*)&task->affinity.hw_thread_affinity, bitmap);
+    bitmap_to_str(core_str, (Bitmap*)&task->affinity.core_affinity, bitmap);
+    bitmap_to_str(numa_str, &task->affinity.numa_affinity, bitmap);
 
     if (task->is_first_rank)
     {
@@ -378,7 +405,7 @@ void hpcat_display_yaml(Hpcat *handle)
     if (task->nic.num_nic > 0)
     {
         char nic_numa_str[STR_MAX] = { 0 };
-        hwloc_bitmap_list_snprintf(nic_numa_str, STR_MAX - 1, task->nic.numa_affinity);
+        sprintf(nic_numa_str, "%d", task->nic.numa_affinity);
         printf("%8snetwork:\n", " ");
         printf("%10s- interface: \"%s\"\n", " ", task->nic.name);
         printf("%12snuma: \"%s\"\n", " ", nic_numa_str);
@@ -388,8 +415,8 @@ void hpcat_display_yaml(Hpcat *handle)
     {
         char accel_numa_str[STR_MAX] = { 0 };
         char accel_visible_str[STR_MAX] = { 0 };
-        hwloc_bitmap_list_snprintf(accel_numa_str, STR_MAX - 1, task->accel.numa_affinity);
-        hwloc_bitmap_list_snprintf(accel_visible_str, STR_MAX - 1, task->accel.visible_devices);
+        bitmap_to_str(accel_numa_str, &task->accel.numa_affinity, bitmap);
+        bitmap_to_str(accel_visible_str, &task->accel.visible_devices, bitmap);
         printf("%8saccelerators:\n", " ");
         printf("%10s- visible: \"%s\"\n", " ", accel_visible_str);
         printf("%10spci: \"%s\"\n", " ", task->accel.pciaddr);
@@ -403,9 +430,9 @@ void hpcat_display_yaml(Hpcat *handle)
         for (int i = 0; i < task->num_threads; i++)
         {
             Thread *thread = &task->threads[i];
-            hwloc_bitmap_list_snprintf(hw_thread_str, STR_MAX - 1, thread->affinity.hw_thread_affinity);
-            hwloc_bitmap_list_snprintf(core_str, STR_MAX - 1, thread->affinity.core_affinity);
-            hwloc_bitmap_list_snprintf(numa_str, STR_MAX - 1, thread->affinity.numa_affinity);
+            bitmap_to_str(hw_thread_str, (Bitmap*)&task->affinity.hw_thread_affinity, bitmap);
+            bitmap_to_str(core_str, (Bitmap*)&task->affinity.core_affinity, bitmap);
+            bitmap_to_str(numa_str, &task->affinity.numa_affinity, bitmap);
 
             printf("%10s- thread: %d\n", " ", thread->id);
             printf("%12slogical_proc: \"%s\"\n", " ", hw_thread_str);
@@ -413,5 +440,7 @@ void hpcat_display_yaml(Hpcat *handle)
             printf("%12snuma: \"%s\"\n", " ", numa_str);
         }
     }
+
+    hwloc_bitmap_free(bitmap);
     fflush(stdout);
 }
