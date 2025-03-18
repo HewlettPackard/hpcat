@@ -198,6 +198,5 @@ Examples
 Future Work
 -----------
 
-- [ ] If any issue raised with line ordering in the output, make first MPI rank print all lines (no issue so far)
 - [ ] Support Intel's Ponte Vecchio GPUs
 - [ ] Support (if possible) NIC affinities with other MPI distributions

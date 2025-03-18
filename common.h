@@ -38,6 +38,13 @@
             exit(1);                        \
         } while(0)
 
+#define VERBOSE(hpcat, ...)                                               \
+        do {                                                              \
+            if (hpcat->settings.enable_verbose && hpcat->id == 0) {       \
+                fprintf(stderr, __VA_ARGS__);                             \
+                fflush(stderr);                                           \
+            }                                                             \
+        } while(0)
 
 #define PCI_STR_MAX    32
 #define MAX_DEVICES    32

@@ -30,7 +30,7 @@
 
 #include "hpcat.h"
 
-void hpcat_display_stdout(Hpcat *handle);
-void hpcat_display_yaml(Hpcat *handle);
+void hpcat_display_stdout(Hpcat *handle, Task *task);
+void hpcat_display_yaml(Hpcat *handle, Task *task);
 
 #endif /* HPCAT_OUTPUT_H */

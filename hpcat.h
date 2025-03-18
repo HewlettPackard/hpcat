@@ -97,7 +97,7 @@ typedef struct Hpcat
     HpcatSettings_t  settings;
     int              num_nodes;
     int              num_tasks;
-    Task             task;
+    int              id;
     char             mpi_version[MPI_MAX_LIBRARY_VERSION_STRING];
 } Hpcat;
 

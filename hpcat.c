@@ -49,14 +49,6 @@
             }                                                                              \
         } while(0)
 
-#define VERBOSE(hpcat, ...)                                               \
-        do {                                                              \
-            if (hpcat->settings.enable_verbose && hpcat->task.id == 0) {  \
-                fprintf(stderr, __VA_ARGS__);                             \
-                fflush(stderr);                                           \
-            }                                                             \
-        } while(0)
-
 hwloc_topology_t topology;
 
 static void serialize_bitmap(Bitmap *bitmap, hwloc_bitmap_t tmp)
@@ -145,14 +137,13 @@ void get_cpu_numa_affinity(Affinity *affinity)
 /**
  * Retrieve accelerator count, PCIe addresses and NUMA node affinities using dyn library
  *
- * @param   hpcat[inout]     Application handle
+ * @param   hpcat[in]        Application handle
+ * @param   task[inout]      Task handle
  * @param   check_lib[in]    Path to a library to check if the software stack of a gpu type is available
  * @param   dyn_module[in]   Dynamic library to load if the software stack is available
  */
-void try_get_accel_info(Hpcat *hpcat, const char *check_lib, const char *dyn_module)
+void try_get_accel_info(Hpcat *hpcat, Task *task, const char *check_lib, const char *dyn_module)
 {
-    Task *task = &hpcat->task;
-
     /* Check if accelerator library is installed */
     void *handle = dlopen(check_lib, RTLD_LAZY);
     if (handle == NULL)
@@ -260,6 +251,10 @@ const char *parse_buffer(char *dest, const int max_len, const char *buf, const c
 
 /**
  * Retrieve NIC information by activating verbose flag before calling MPI_Init
+ *
+ * @param   task[inout]   Task handle
+ * @param   nargs[in]     Program argument count
+ * @param   args[in]      Program argument vector
  */
 void MPI_Init_verbose(Task *task, int *nargs, char **args[])
 {
@@ -335,13 +330,14 @@ void MPI_Finalize_noverbose(void)
  * Retrieve MPI, OMP and accelerator based information
  *
  * @param   hpcat[inout]    Application handle
+ * @param   task[inout]     Task handle
  */
-void hpcat_init(Hpcat *hpcat)
+void hpcat_init(Hpcat *hpcat, Task *task)
 {
     /* Retrieving MPI info */
-    Task *task = &hpcat->task;
     MPI_CHECK( MPI_Comm_size(MPI_COMM_WORLD, &hpcat->num_tasks) );
-    MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &task->id) );
+    MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &hpcat->id) );
+    task->id = hpcat->id;
 
     /* Retrieving MPI distribution and version, only keep first line */
     int resultlen;
@@ -367,10 +363,10 @@ void hpcat_init(Hpcat *hpcat)
     memset(&task->accel, 0, sizeof(Accelerators));
 
     /* Checking if HIP is available, if so fetch information */
-    try_get_accel_info(hpcat, "libamdhip64.so", "hpcathip.so");
+    try_get_accel_info(hpcat, task, "libamdhip64.so", "hpcathip.so");
 
     /* Checking if CUDA is available, if so fetch information */
-    try_get_accel_info(hpcat, "libnvidia-ml.so", "hpcatnvml.so");
+    try_get_accel_info(hpcat, task, "libnvidia-ml.so", "hpcatnvml.so");
 
     /* Disable GPUs if no tasks can detect them */
     int accel_sum = 0;
@@ -406,19 +402,20 @@ int main(int argc, char* argv[])
     unsetenv("MPICH_GPU_SUPPORT_ENABLED");
 
     Hpcat hpcat = { 0 };
+    Task task = { 0 };
 
     /* Retrieving user defined parameters passed as arguments */
     hpcat_settings_init(argc, argv, &hpcat.settings);
 
     /* Initializing MPI in verbose mode */
-    MPI_Init_verbose(&hpcat.task, &argc, &argv);
+    MPI_Init_verbose(&task, &argc, &argv);
 
     /* Retrieve MPI, OMP and accelerator based details */
-    hpcat_init(&hpcat);
+    hpcat_init(&hpcat, &task);
 
     /* Mapping between hostname and ranks */
     char map[hpcat.num_tasks][HOST_NAME_MAX];
-    strncpy(map[hpcat.task.id], hpcat.task.hostname, HOST_NAME_MAX - 1);
+    strncpy(map[task.id], task.hostname, HOST_NAME_MAX - 1);
     MPI_CHECK( MPI_Allgather(MPI_IN_PLACE, 0, 0, map[0], HOST_NAME_MAX, MPI_CHAR, MPI_COMM_WORLD) );
 
     /* List of nodes */
@@ -448,7 +445,7 @@ int main(int argc, char* argv[])
     /* Reordered list of ranks ( all ranks on a node before going to the next one) */
     int reordered_ranks[hpcat.num_tasks];
     int pos = 0;
-    hpcat.task.is_first_node_rank = false;
+    task.is_first_node_rank = false;
     for (int i = 0; i < hpcat.num_nodes; i++)
     {
         bool is_first_node_rank = true;
@@ -458,8 +455,8 @@ int main(int argc, char* argv[])
             {
                 if (is_first_node_rank)
                 {
-                    if (j == hpcat.task.id)
-                        hpcat.task.is_first_node_rank = true;
+                    if (j == task.id)
+                        task.is_first_node_rank = true;
 
                     is_first_node_rank = false;
                 }
@@ -469,36 +466,38 @@ int main(int argc, char* argv[])
         }
     }
 
-    hpcat.task.is_first_rank = (hpcat.task.id == reordered_ranks[0]);
-    hpcat.task.is_last_rank = (hpcat.task.id == reordered_ranks[hpcat.num_tasks - 1]);
+    task.is_first_rank = (task.id == reordered_ranks[0]);
+    task.is_last_rank = (task.id == reordered_ranks[hpcat.num_tasks - 1]);
 
-    /* Sync to display output in sequence */
-    if (!hpcat.task.is_first_rank)
+    Task *tasks = NULL;
+    if (task.is_first_rank)
     {
-        MPI_Status status; int flag;
-        MPI_CHECK( MPI_Recv(&flag, 1, MPI_INT, reordered_ranks[hpcat.task.id - 1], 100, MPI_COMM_WORLD, &status) );
+        tasks = malloc(sizeof(Task) * hpcat.num_tasks);
+        if (tasks == NULL)
+            FATAL("Error: unable to allocate tasks buffer. Exiting.\n");
     }
 
-    switch (hpcat.settings.output_type)
-    {
-        case STDOUT:
-            hpcat_display_stdout(&hpcat);
-            break;
-        case YAML:
-            hpcat_display_yaml(&hpcat);
-            break;
-    }
+    MPI_Gather(&task, sizeof(Task), MPI_BYTE, tasks, sizeof(Task), MPI_BYTE, 0, MPI_COMM_WORLD);
 
-    usleep(10); // Wait output get aggregated by the job manager
-
-    if (!hpcat.task.is_last_rank)
+    if (task.is_first_rank)
     {
-        MPI_CHECK( MPI_Send(&hpcat.task.id, 1, MPI_INT, reordered_ranks[hpcat.task.id + 1], 100, MPI_COMM_WORLD) );
+        for (int i = 0; i < hpcat.num_tasks; i++)
+            switch (hpcat.settings.output_type)
+            {
+                case STDOUT:
+                    hpcat_display_stdout(&hpcat, &tasks[reordered_ranks[i]]);
+                    break;
+                case YAML:
+                    hpcat_display_yaml(&hpcat, &tasks[reordered_ranks[i]]);
+                    break;
+            }
+
+        fflush(stdout);
+        free(tasks);
     }
 
     /* Clean up */
     hwloc_topology_destroy(topology);
-
     MPI_Finalize_noverbose();
     return 0;
 }

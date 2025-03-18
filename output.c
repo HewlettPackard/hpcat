@@ -202,10 +202,9 @@ static void stdout_split_end(Hpcat *handle)
     printf("%s\n", line);
 }
 
-static void stdout_node(Hpcat *handle)
+static void stdout_node(Hpcat *handle, Task *task)
 {
     HpcatSettings_t *settings = &handle->settings;
-    Task *task = &handle->task;
     char line[STR_MAX] = { '\0' };
     int ret = { 0 };
 
@@ -231,10 +230,9 @@ static void bitmap_to_str(char *str, Bitmap *bitmap, hwloc_bitmap_t tmp)
     hwloc_bitmap_list_snprintf(str, STR_MAX - 1, tmp);
 }
 
-static void stdout_task(Hpcat *handle)
+static void stdout_task(Hpcat *handle, Task *task)
 {
     HpcatSettings_t *settings = &handle->settings;
-    Task *task = &handle->task;
     char line[STR_MAX] = { '\0' };
     int ret = { 0 };
 
@@ -276,10 +274,9 @@ static void stdout_task(Hpcat *handle)
     printf("%s\n", line);
 }
 
-static void stdout_omp(Hpcat *handle)
+static void stdout_omp(Hpcat *handle, Task *task)
 {
     HpcatSettings_t *settings = &handle->settings;
-    Task *task = &handle->task;
     char line[STR_MAX] = { '\0' };
     int ret = { 0 };
 
@@ -325,10 +322,8 @@ static void stdout_footer(Hpcat *handle)
  *
  * @param   handle[in]          Hpcat handle
  */
-void hpcat_display_stdout(Hpcat *handle)
+void hpcat_display_stdout(Hpcat *handle, Task *task)
 {
-    Task *task = &handle->task;
-
     /* First (reordered) rank prints the header */
     if (task->is_first_rank)
     {
@@ -340,14 +335,14 @@ void hpcat_display_stdout(Hpcat *handle)
     if (task->is_first_node_rank)
     {
         stdout_split_middle(handle, true);
-        stdout_node(handle);
+        stdout_node(handle, task);
     }
 
     /* Task level */
-    stdout_task(handle);
+    stdout_task(handle, task);
 
     /* OMP thread level */
-    stdout_omp(handle);
+    stdout_omp(handle, task);
 
     if (task->is_last_rank)
     {
@@ -361,8 +356,6 @@ void hpcat_display_stdout(Hpcat *handle)
         else
             stdout_split_end(handle);
     }
-
-    fflush(stdout);
 }
 
 /**
@@ -370,9 +363,8 @@ void hpcat_display_stdout(Hpcat *handle)
  *
  * @param   handle[in]          Hpcat handle
  */
-void hpcat_display_yaml(Hpcat *handle)
+void hpcat_display_yaml(Hpcat *handle, Task *task)
 {
-    Task *task = &handle->task;
     char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
 
     hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
@@ -442,5 +434,4 @@ void hpcat_display_yaml(Hpcat *handle)
     }
 
     hwloc_bitmap_free(bitmap);
-    fflush(stdout);
 }
