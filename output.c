@@ -61,9 +61,9 @@
 #define MARGINS_W  2
 #define SPLIT_W    1
 
-#define H_SPLIT  "═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════"
-#define H_DASH   "-------------------------------------------------------------------------------------------------------------------------------------------"
-#define H_SPACE  "                                                                                                                                           "
+#define H_SPLIT  "═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════"
+#define H_DASH   "-------------------------------------------------------------------------------------------------------------------------------------------------------"
+#define H_SPACE  "                                                                                                                                                       "
 #define TITLE    "HPC Affinity Tracker"
 #define VERSION  "v" HPCAT_VERSION " "
 
@@ -411,7 +411,7 @@ void hpcat_display_yaml(Hpcat *handle, Task *task)
         bitmap_to_str(accel_visible_str, &task->accel.visible_devices, bitmap);
         printf("%8saccelerators:\n", " ");
         printf("%10s- visible: \"%s\"\n", " ", accel_visible_str);
-        printf("%10spci: \"%s\"\n", " ", task->accel.pciaddr);
+        printf("%12spci: \"%s\"\n", " ", task->accel.pciaddr);
         printf("%12snuma: \"%s\"\n", " ", accel_numa_str);
     }
 
