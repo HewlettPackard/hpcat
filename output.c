@@ -49,9 +49,9 @@
 #define MPI_W      4
 #define NIC_W     20
 #define NIC_W1    10
-#define ACCEL_W   43
+#define ACCEL_W   49
 #define ACCEL_W1   7
-#define ACCEL_W2  23
+#define ACCEL_W2  29
 #define OMP_W      4
 #define CPU_W     46
 #define CPU_W1    20
@@ -129,7 +129,7 @@ static void stdout_titles(Hpcat *handle)
 
     if (settings->enable_accel)
     {
-        ret[0] += sprintf(line[0] + ret[0], " %" STR(ACCEL_W) "s ║", "ACCELERATORS               ");
+        ret[0] += sprintf(line[0] + ret[0], " %" STR(ACCEL_W) "s ║", "ACCELERATORS                   ");
         ret[1] += sprintf(line[1] + ret[1], " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║", "ID", "PCIE ADDR.", "NUMA");
     }
 

@@ -16,8 +16,9 @@ whether or not accelerators are present.
 Dependencies
 ------------
 
-* **NVIDIA NVML** (Optional, for NVIDIA GPUs)
 * **AMD ROCm** (Optional, for AMD GPUs)
+* **Intel OneAPI Level Zero** (Optional, for Intel GPUs)
+* **NVIDIA NVML** (Optional, for NVIDIA GPUs)
 * **hwloc-devel**
 * **MPI**
 
@@ -180,7 +181,7 @@ Examples
     ╚═════════════════╩══════╩════════════╧═════════╩══════╩═══════════════════════════╧═════════╝
 
 
-**ParryPeak (AMD APUs MI300A) nodes:**
+**ParryPeak (AMD APUs MI300A) node:**
 
     % srun -p parrypeak -N 1 -n 4 -c 24 --hint=nomultithread ./gpu-affinity.sh ./hpcat --no-banner
     ╔═════════════════╦══════╦═════════════════════════════════════════════╦═════════════════════════════════════╗
@@ -195,8 +196,30 @@ Examples
     ╚═════════════════╩══════╩═════════╧═════════════════════════╧═════════╩═══════════════════════════╧═════════╝
 
 
+**Exascale Compute Blade (Intel GPU Max 1550) node:**
+
+    % srun -p ecb -N 1 -n 12 -c 8 --hint=nomultithread ./gpu-affinity.sh ./hpcat --no-banner
+    ╔═════════════════╦══════╦═══════════════════════════════════════════════════╦════════════════════════════════════════════════╗
+    ║            HOST ║  MPI ║                   ACCELERATORS                    ║                        CPU                     ║
+    ║          (NODE) ║ RANK ║      ID │                    PCIE ADDR. │    NUMA ║         LOGICAL PROC │ PHYSICAL CORE │    NUMA ║
+    ╠═════════════════╬══════╬═════════╪═══════════════════════════════╪═════════╬══════════════════════╪═══════════════╪═════════╣
+    ║       nid000014 ║      ║         │                               │         ║                      │               │         ║
+    ║                 ║    0 ║       0 │                          0:18 │       0 ║                  0-7 │           0-7 │       0 ║
+    ║                 ║    1 ║       1 │                          0:18 │       0 ║                 8-15 │          8-15 │       0 ║
+    ║                 ║    2 ║       2 │                          0:42 │       0 ║                16-23 │         16-23 │       0 ║
+    ║                 ║    3 ║       3 │                          0:42 │       0 ║                24-31 │         24-31 │       0 ║
+    ║                 ║    4 ║       4 │                          0:6c │       0 ║                32-39 │         32-39 │       0 ║
+    ║                 ║    5 ║       5 │                          0:6c │       0 ║                40-47 │         40-47 │       0 ║
+    ║                 ║    6 ║       6 │                          1:18 │       1 ║                52-59 │         52-59 │       1 ║
+    ║                 ║    7 ║       7 │                          1:18 │       1 ║                60-67 │         60-67 │       1 ║
+    ║                 ║    8 ║       8 │                          1:42 │       1 ║                68-75 │         68-75 │       1 ║
+    ║                 ║    9 ║       9 │                          1:42 │       1 ║                76-83 │         76-83 │       1 ║
+    ║                 ║   10 ║      10 │                          1:6c │       1 ║                84-91 │         84-91 │       1 ║
+    ║                 ║   11 ║      11 │                          1:6c │       1 ║                92-99 │         92-99 │       1 ║
+    ╚═════════════════╩══════╩═════════╧═══════════════════════════════╧═════════╩══════════════════════╧═══════════════╧═════════╝
+
+
 Future Work
 -----------
 
-- [ ] Support Intel's Ponte Vecchio GPUs
 - [ ] Support (if possible) NIC affinities with other MPI distributions

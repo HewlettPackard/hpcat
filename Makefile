@@ -11,6 +11,10 @@ ifdef HIP_PATH
   TARGETS += amd
 endif
 
+ifdef ONEAPI_ROOT
+  TARGETS += intel
+endif
+
 ifdef CUDA_HOME
   TARGETS += nvidia
 endif
@@ -26,6 +30,9 @@ debug:
 amd:
 	${CC} -O3 -L. -I. -L${HIP_PATH}/lib -I${HIP_PATH}/include -D__HIP_PLATFORM_AMD__ -Wl,-rpath,'${HIP_PATH}/lib' -lamdhip64 -lhwloc -shared -fPIC -ldl accel_hip.c -o hpcathip.so
 
+intel:
+	${CC} -O3 -L. -I. -lze_loader -lhwloc -shared -fPIC -ldl accel_ze.c -o hpcatze.so
+
 nvidia:
 	${CC} -O3 -L. -I. -L${CUDA_HOME}/lib64 -L${CUDA_HOME}/lib64/stubs -L${CUDA_HOME}/include -Wl,-rpath,'${CUDA_HOME}/lib64' -Wl,-rpath,'${CUDA_HOME}/lib64/stubs' -lnvidia-ml -lhwloc -shared -fPIC -ldl accel_nvml.c -o hpcatnvml.so
 
@@ -33,3 +40,4 @@ clean:
 	@rm -f hpcat
 	@rm -f hpcathip.so
 	@rm -f hpcatnvml.so
+	@rm -f hpcatze.so

@@ -55,7 +55,7 @@ static void serialize_bitmap(Bitmap *bitmap, hwloc_bitmap_t tmp)
 {
     bitmap->num_ulongs = hwloc_bitmap_nr_ulongs(tmp);
     if (bitmap->num_ulongs <= 0)
-        FATAL("Error: unable to convert bitmap to ulongs. Exiting.\n");
+        FATAL("Error: unable to evaluate qty of ulongs needed to serialize the bitmap. Exiting.\n");
 
     if (bitmap->num_ulongs > BITMAP_ULONGS_MAX)
         FATAL("Error: bitmap size is too small. Exiting.\n");
@@ -367,6 +367,9 @@ void hpcat_init(Hpcat *hpcat, Task *task)
 
     /* Checking if CUDA is available, if so fetch information */
     try_get_accel_info(hpcat, task, "libnvidia-ml.so", "hpcatnvml.so");
+
+    /* Checking if OneAPI Level Zero is available, if so fetch information */
+    try_get_accel_info(hpcat, task, "libze_loader.so.1", "hpcatze.so");
 
     /* Disable GPUs if no tasks can detect them */
     int accel_sum = 0;
