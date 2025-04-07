@@ -144,8 +144,7 @@ int hpcat_accel_pciaddr_list_str(char *buff, const int max_buff_size)
 
     int max_size = max_buff_size - 1;
 
-    uint32_t last_domain = 0;
-    uint32_t last_bus = 0;
+    uint32_t last_domain = 0, last_bus = 0;
 
     for (int i = 0; i < ze_devices_count; i++)
     {
@@ -170,22 +169,22 @@ int hpcat_accel_pciaddr_list_str(char *buff, const int max_buff_size)
             return -1;
         }
 
+        zes_pci_address_t *addr = &pci_prop.address;
+
         /* Avoid consecutive duplicates (GPU tiles on the same package) */
-        if ((pci_prop.address.domain == last_domain) && (pci_prop.address.bus == last_bus))
+        if ((addr->domain == last_domain) && (addr->bus == last_bus))
             continue;
 
-        last_domain = pci_prop.address.domain;
-        last_bus = pci_prop.address.bus;
-
-        if (buff[0] == '\0')
-            snprintf(pci, PCI_STR_MAX - 1, "%01x:%02x", pci_prop.address.domain, pci_prop.address.bus);
-        else
-            snprintf(pci, PCI_STR_MAX - 1, ",%01x:%02x", pci_prop.address.domain, pci_prop.address.bus);
+        snprintf(pci, PCI_STR_MAX - 1, "%s%01x:%02x", (buff[0] == '\0') ? "" : ",",
+                                                      addr->domain, addr->bus);
 
         strncat(buff, pci, max_size);
         max_size -= strlen(pci);
         if (max_size <= 0)
             return -1;
+
+        last_domain = addr->domain;
+        last_bus = addr->bus;
     }
 
     return 0;

@@ -64,17 +64,8 @@ int hpcat_accel_pciaddr_list_str(char *buff, const int max_buff_size)
         if (hipGetDeviceProperties(&prop, i) != hipSuccess)
             return -1;
 
-        if (buff[0] != '\0')
-        {
-            strncat(buff, ",", max_size);
-            max_size--;
-        }
-
-        /* XXX: Use PCIe DomainId with MI300A (gfx942) */
-        if (strncmp(prop.gcnArchName, "gfx942:", 7) == 0)
-            snprintf(pci, PCI_STR_MAX - 1, "%02x", prop.pciDomainID);
-        else
-            snprintf(pci, PCI_STR_MAX - 1, "%02x", prop.pciBusID);
+        snprintf(pci, PCI_STR_MAX - 1, "%s%01x:%02x", (buff[0] == '\0') ? "" : ",",
+                                                      prop.pciDomainID, prop.pciBusID);
 
         strncat(buff, pci, max_size);
         max_size -= strlen(pci);
