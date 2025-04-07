@@ -1,5 +1,5 @@
-HPC Affinity Tracker (HPCAT)
-============================
+`HPC Affinity Tracker (HPCAT)`
+==============================
 
 This application is designed to display NUMA, CPU core and GPU affinities within
 the context of HPC applications. It provides reports on MPI tasks, OpenMP
@@ -8,9 +8,19 @@ enabled if GPUs are detected), and NICs (Cray MPICH only, starting from 2 nodes)
 The output format is a human-readable, condensed table, but YAML is also available
 as an option.
 
-The application uses dynamic linking modules to retrieve information about
-accelerators, allowing the same binary to be used across different partitions,
-whether or not accelerators are present.
+> [!NOTE]
+> The application uses dynamic linking modules to retrieve information about
+> accelerators, allowing the same binary to be used across different partitions,
+> whether or not accelerators are present.
+
+
+Table of Contents
+-----------------
+
+1. [Dependencies](#dependencies)
+1. [Installation](#installation)
+1. [Usage](#usage)
+1. [Examples](#examples)
 
 
 Dependencies
@@ -19,27 +29,16 @@ Dependencies
 * **AMD ROCm** (Optional, for AMD GPUs)
 * **Intel OneAPI Level Zero** (Optional, for Intel GPUs)
 * **NVIDIA NVML** (Optional, for NVIDIA GPUs)
-* **hwloc-devel**
 * **MPI**
-
-If hwloc-devel is not installed, it can be re-compiler that way:
-
-    wget https://download.open-mpi.org/release/hwloc/v2.11/hwloc-2.11.2.tar.gz
-    tar xzf hwloc-2.11.2.tar.gz
-    cd hwloc-2.11.2/
-    ./configure --prefix=$HOME/TOOLS/hwloc
-    make
-    make install
-    export C_INCLUDE_PATH=$HOME/TOOLS/hwloc/include:$C_INCLUDE_PATH
-    export LIBRARY_PATH=$HOME/TOOLS/hwloc/lib:$LIBRARY_PATH
+* **[hwloc](https://github.com/open-mpi/hwloc)**
 
 
-How to build HPCAT
-------------------
+Installation
+------------
 
 **HPE Cray Programming Environment (CPE)**
 
-With cray environment:
+With Cray environment:
 
     module load PrgEnv-cray
     module load rocm # Optional
@@ -68,8 +67,8 @@ To enabble the NVIDIA plugin, ensure the `CUDA_HOME` environment variable is set
 *Note: the dynamic library modules should be stored in the same directory as the hpcat binary.*
 
 
-How to run HPCAT
-----------------
+Usage
+-----
 
     % hpcat [ARGS...]
 
@@ -218,8 +217,3 @@ Examples
     ║                 ║   11 ║      11 │                          1:6c │       1 ║                92-99 │         92-99 │       1 ║
     ╚═════════════════╩══════╩═════════╧═══════════════════════════════╧═════════╩══════════════════════╧═══════════════╧═════════╝
 
-
-Future Work
------------
-
-- [ ] Support (if possible) NIC affinities with other MPI distributions
