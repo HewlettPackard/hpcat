@@ -1,0 +1,216 @@
+#!/bin/bash
+################################################################################
+#                                                                              #
+# (C) Copyright 2025 Hewlett Packard Enterprise Development LP                 #
+#                                                                              #
+#  Permission is hereby granted, free of charge, to any person obtaining a     #
+#  copy of this software and associated documentation files (the "Software"),  #
+#  to deal in the Software without restriction, including without limitation   #
+#  the rights to use, copy, modify, merge, publish, distribute, sublicense,    #
+#  and/or sell copies of the Software, and to permit persons to whom the       #
+#  Software is furnished to do so, subject to the following conditions:        #
+#                                                                              #
+#  The above copyright notice and this permission notice shall be included     #
+#  in all copies or substantial portions of the Software.                      #
+#                                                                              #
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR  #
+#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,    #
+#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL    #
+#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR        #
+#  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,       #
+#  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR       #
+#  OTHER DEALINGS IN THE SOFTWARE.                                             #
+#                                                                              #
+####----[ FULL USAGE ]------------------------------------------------------####
+#% Synopsis:                                                                   #
+#+    ./configure [OPTIONS]                                                    #
+#%                                                                             #
+#% Description:                                                                #
+#%   configure is a cmake wrapper (similar to autotools).                      #
+#%   For a better control, directly use cmake.                                 #
+#%                                                                             #
+#%   By default the tool will be install in the bin subdirectory. You may want #
+#%   to specify another installation directory by using '--prefix' for         #
+#%   instance : --prefix=$HOME/hpcat                                           #
+#%                                                                             #
+#% Options:                                                                    #
+#%        --disable-gpu-amd        Disable AMD GPU support.                    #
+#%        --disable-gpu-intel      Disable Intel GPU support.                  #
+#%        --disable-gpu-nvidia     Disable NVIDIA GPU support.                 #
+#%        --enable-debug           Enable debug support.                       #
+#%    -h, --help                   Print this help.                            #
+#%        --prefix=PREFIX          Install files in PREFIX.                    #
+#%        --version                Print script information.                   #
+#%                                                                             #
+#% Implementation:                                                             #
+#-    module          cmake wrapper                                            #
+#-    project         https://github.com/HewlettPackard/hpcat                  #
+##################################HEADER_END####################################
+
+
+##----[ GLOBAL VARIABLES ]----------------------------------------------------##
+
+    ENABLE_TESTS='false'
+    ENABLE_COLORS='false'
+    SC_HSIZE=$(sed -n '/#HEADER_END#/ { =; q }' ${0})    # Get header size
+    SC_DIR=$(dirname $(readlink -f "${BASH_SOURCE[0]}")) # Retrieve script path
+    SC_NAME=$(basename ${0})                             # Retrieve name of the script
+    BUILD_DIR="${SC_DIR}/build"                          # Where to build sources
+    INSTALL_DIR="${SC_DIR}/bin"                          # Where to install (default)
+
+
+##----[ ERRORS ]--------------------------------------------------------------##
+
+    ERROR_MISSING_CMAKE="Cmake is not installed. Please install the package."
+    ERROR_INVALID_ARG="Please check --help. Invalid argument: "
+
+
+##----[ FUNCTIONS ]-----------------------------------------------------------##
+
+    ############################################################################
+    # Print information related to development.                                #
+    # Args:                                                                    #
+    #       None                                                               #
+    # Result: print version and contact information.                           #
+    info()
+    {
+        head -n${SC_HSIZE:-99} "${0}" | grep -e "^#-" |
+                        sed -e "s/^#-//g" -e "s/#$//g" -e "s/\[at\]/@/g"
+    }
+
+    ############################################################################
+    # Print full detailled usage.                                              #
+    # Args:                                                                    #
+    #       None                                                               #
+    # Result: print help.                                                      #
+    usage_full()
+    {
+        head -n${SC_HSIZE:-99} "${0}" | grep -e "^#[%+]" |
+                       sed -e "s/^#[%+-]//g" -e "s/#$//g"
+
+        info
+    }
+
+    ############################################################################
+    # Print error in stderr.                                                   #
+    # Args:                                                                    #
+    #      -$1: Error code.                                                    #
+    # Result: Print error and quit.                                            #
+    print_error_and_stop()
+    {
+        # Extract argument
+        error_msg=${1}
+        error_arg=${2}
+
+        echo "ERROR: ${error_msg}${arror_arg}" 1>&2
+
+        exit 1
+    }
+
+    ############################################################################
+    # Check if Cmake is installed.                                             #
+    # Args:                                                                    #
+    #        None                                                              #
+    # Result: .                                                                #
+    check_cmake_install()
+    {
+        # Check if cmake is installed
+        command -v cmake >/dev/null 2>&1 \
+                 || print_error_and_stop "${ERROR_MISSING_CMAKE}"
+
+        if [ ! -d "${BUILD_DIR}" ]; then
+            mkdir -p ${BUILD_DIR}
+        fi
+    }
+
+    ############################################################################
+    # Parge all arguments.                                                     #
+    # Args:                                                                    #
+    #      -$*: All arguments.                                                 #
+    # Result: set configuration                                                #
+    parse_arguments()
+    {
+        for arg in "$@"
+        do
+            case "$arg" in
+                -h | --help)
+                    usage_full; exit 0;;
+                --prefix=*)
+                    res=`echo "$arg" | sed -e "s/^--prefix=//g"`
+                    INSTALL_DIR=${res}
+                    ;;
+                --disable-gpu-amd)
+                    PARAM="${PARAM} -DDISABLE_GPU_AMD=TRUE"
+                    ;;
+                --disable-gpu-intel)
+                    PARAM="${PARAM} -DDISABLE_GPU_INTEL=TRUE"
+                    ;;
+                --disable-gpu-nvidia)
+                    PARAM="${PARAM} -DDISABLE_GPU_NVIDIA=TRUE"
+                    ;;
+                --enable-debug)
+                    PARAM="${PARAM} -DDEBUG:BOOL=TRUE"
+                    ;;
+                --version)
+                    info; exit 0;;
+                *)
+                    print_error_and_stop "${ERROR_INVALID_ARG}" "${arg}"
+                    ;;
+            esac
+        done
+
+        if [[ ! ${PARAM} =~ "CMAKE_INSTALL_PREFIX" ]]; then
+            PARAM="${PARAM} -DCMAKE_INSTALL_PREFIX=/opt/ecounter"
+        fi
+    }
+
+
+    ############################################################################
+    # Execute cmake.                                                           #
+    # Args:                                                                    #
+    #        None                                                              #
+    # Result: .                                                                #
+    exec_cmake()
+    {
+        PARAM="${PARAM} -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}"
+
+        cd ${BUILD_DIR}
+        cmake ${PARAM} ${SC_DIR}
+        cd ${SC_DIR}
+    }
+
+
+    ############################################################################
+    # Generate Makefile to call the one created by cmake.                      #
+    # Args:                                                                    #
+    #        None                                                              #
+    # Result: .                                                                #
+    generate_makefile()
+    {
+cat > Makefile << EOF
+all:
+	+@make --no-print-directory -C ${BUILD_DIR} all
+
+install:
+	@make --no-print-directory -C ${BUILD_DIR} install
+
+clean:
+	@make --no-print-directory -C ${BUILD_DIR} clean
+
+distclean:
+	@rm -rf ${BUILD_DIR}
+	@rm -rf ${SC_DIR}/bin
+	@rm ${SC_DIR}/Makefile
+EOF
+    }
+
+
+##----[ MAIN ]----------------------------------------------------------------##
+
+    check_cmake_install
+
+    parse_arguments $*
+    exec_cmake
+    generate_makefile
+
+    exit $?

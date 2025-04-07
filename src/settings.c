@@ -48,12 +48,12 @@ static char args_doc[] = " ";
 /* Options */
 static struct argp_option options[] =
 {
-    {"enable-omp",      11,  0,         0,  "Enable display of OpenMP affinities"},
-    {"disable-omp",     21,  0,         0,  "Disable display of OpenMP affinities"},
-    {"disable-accel",   22,  0,         0,  "Disable display of GPU affinities"},
-    {"disable-nic",     23,  0,         0,  "Disable display of Network Interface affinities"},
-    {"no-banner",       31,  0,         0,  "Do not display header and footer banners"},
-    {"verbose",         'v', 0,         0,  "Make the operation more talkative"},
+    {"enable-omp",      11,  0,         0,  "Display OpenMP affinities"},
+    {"disable-omp",     21,  0,         0,  "Don't display OpenMP affinities"},
+    {"disable-accel",   22,  0,         0,  "Don't display GPU affinities"},
+    {"disable-nic",     23,  0,         0,  "Don't display Network affinities"},
+    {"no-banner",       31,  0,         0,  "Don't display header/footer"},
+    {"verbose",         'v', 0,         0,  "Make the operations talkative"},
     {"yaml",            'y', 0,         0,  "YAML output"},
     {0}
 };

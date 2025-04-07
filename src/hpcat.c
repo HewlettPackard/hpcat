@@ -362,13 +362,13 @@ void hpcat_init(Hpcat *hpcat, Task *task)
     memset(&task->accel, 0, sizeof(Accelerators));
 
     /* Checking if HIP is available, if so fetch information */
-    try_get_accel_info(hpcat, task, "libamdhip64.so", "hpcathip.so");
+    try_get_accel_info(hpcat, task, "libamdhip64.so", "libhpcathip.so");
 
     /* Checking if CUDA is available, if so fetch information */
-    try_get_accel_info(hpcat, task, "libnvidia-ml.so", "hpcatnvml.so");
+    try_get_accel_info(hpcat, task, "libnvidia-ml.so", "libhpcatnvml.so");
 
     /* Checking if OneAPI Level Zero is available, if so fetch information */
-    try_get_accel_info(hpcat, task, "libze_loader.so.1", "hpcatze.so");
+    try_get_accel_info(hpcat, task, "libze_loader.so.1", "libhpcatze.so");
 
     /* Disable GPUs if no tasks can detect them */
     int accel_sum = 0;

@@ -1,11 +1,14 @@
 `HPC Affinity Tracker (HPCAT)`
 ==============================
 
-This application is designed to display NUMA, CPU core and GPU affinities within
-the context of HPC applications. It provides reports on MPI tasks, OpenMP
-(automatically enabled if `OMP_NUM_THREADS` is set), accelerators (automatically
-enabled if GPUs are detected), and NICs (Cray MPICH only, starting from 2 nodes).
-The output format is a human-readable, condensed table, but YAML is also available
+This application is designed to display **NUMA**, **CPU core**, **Hardware threads**,
+**Network interfaces** and **GPU affinities** within the context of HPC applications.
+
+It provides reports on **MPI** tasks, **OpenMP** (automatically enabled if
+`OMP_NUM_THREADS` is set), **accelerators** (automatically enabled if GPUs are
+detected), and **NICs** (*Cray MPICH* only, starting from 2 nodes).
+
+The output format is a human-readable, condensed table, but *YAML* is also available
 as an option.
 
 > [!NOTE]
@@ -36,35 +39,32 @@ Dependencies
 Installation
 ------------
 
-**HPE Cray Programming Environment (CPE)**
+HPCAT uses git submodules and CMake with a configure wrapper.
 
-With Cray environment:
-
-    module load PrgEnv-cray
-    module load rocm # Optional
-    module load cuda # Optional
-    module unload craype
+    git submodule update --init --recursive
+    ./configure
     make
-
-With GNU enironment:
-
-    module load PrgEnv-gnu
-    module load rocm # Optional
-    module load cuda # Optional
-    module unload craype
-    make
+    make install
 
 
-**Without CPE**
-
-Ensure that mpicc is available otherwise set the MPICC environment variable.
-To enable the AMD plugin, ensure the `HIP_PATH` environment variable is set
-To enabble the NVIDIA plugin, ensure the `CUDA_HOME` environment variable is set
-
-    make
+> [!IMPORTANT]
+> GPU modules are automatically built when the proper libraries are found. But:
+> * For NVIDIA GPU module, `CUDA_HOME` environment variable should be set.
+> * For Intel GPU module, `ONEAPI_ROOT` environment variable should be set
+> (`source /opt/intel/oneapi/setvars.sh` can be used to set it).
 
 
-*Note: the dynamic library modules should be stored in the same directory as the hpcat binary.*
+> [!CAUTION]
+> The tool will be installed in the *bin* subdirectory by default. You may want
+> to use  `./configure --prefix=<destination_path>` to define your own destination
+> path (or directly use CMake and not the configure wrapper).
+> If you decide to move the tool to a different directory, make sure that the
+> dynamic library modules are stored in the same directory as the *hpcat* binary.
+> Otherwise, the module(s) will be ignored.
+
+
+> [!TIP]
+> Compilation of each GPU module can also be skipped (check `./configure --help`).
 
 
 Usage
@@ -74,12 +74,12 @@ Usage
 
 Arguments are :
 
-        --disable-accel        Disable display of GPU affinities
-        --disable-nic          Disable display of Network Interface affinities
-        --disable-omp          Disable display of OpenMP affinities
-        --enable-omp           Enable display of OpenMP affinities
-        --no-banner            Do not display header and footer banners
-    -v, --verbose              Make the operation more talkative
+        --disable-accel        Don't display GPU affinities
+        --disable-nic          Don't display Network affinities
+        --disable-omp          Don't display OpenMP affinities
+        --enable-omp           Display OpenMP affinities
+        --no-banner            Do not display header/footer
+    -v, --verbose              Make the operations talkative
     -y, --yaml                 YAML output
     -?, --help                 Give this help list
         --usage                Give a short usage message
