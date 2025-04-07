@@ -29,198 +29,112 @@
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
-#include <hwloc.h>
 #include <stdlib.h>
 
+#include "hwloc.h"
+#include "fort.h"
 #include "output.h"
 #include "common.h"
 #include "settings.h"
 
-#define QUOTE(name) #name
-#define STR(macro) QUOTE(macro)
-
 #define STR_MAX      4096
+#define OMP_STR_MAX    10
 
-/* Bytes required to encode ext ASCII char */
-#define EXT_SZ 3
-
-/* Column width (not accounting for margins) */
-#define HOST_W    15
-#define MPI_W      4
-#define NIC_W     20
-#define NIC_W1    10
-#define ACCEL_W   49
-#define ACCEL_W1   7
-#define ACCEL_W2  29
-#define OMP_W      4
-#define CPU_W     46
-#define CPU_W1    20
-#define CPU_W2    13
-#define NUMA_W     7
-
-#define MARGINS_W  2
-#define SPLIT_W    1
-
-#define H_SPLIT  "═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════"
-#define H_DASH   "-------------------------------------------------------------------------------------------------------------------------------------------------------"
-#define H_SPACE  "                                                                                                                                                       "
 #define TITLE    "HPC Affinity Tracker"
-#define VERSION  "v" HPCAT_VERSION " "
+#define VERSION  "v" HPCAT_VERSION
+
+#define HOST_COL  1
+#define MPI_COL   1
+#define OMP_COL   1
+#define CPU_COL   3
+#define ACCEL_COL 3
+#define NIC_COL   2
+
+ft_table_t *table = NULL;
+size_t num_columns = 0;
+size_t num_rows = 0;
+size_t num_omp_threads = 0;
 
 static void stdout_header(Hpcat *handle)
 {
     HpcatSettings_t *settings = &handle->settings;
-    char line[3][STR_MAX] = { {'\0'} };
-    int ret = { 0 };
-    int all_col = (HOST_W + MPI_W + CPU_W + 3 * MARGINS_W + 2 * SPLIT_W);
 
-    ret += sprintf(line[2] + ret, "%s%.*s╦%.*s╦",  settings->enable_banner ? "╠" : "╔",
-                   (HOST_W + MARGINS_W) * EXT_SZ, H_SPLIT, (MPI_W + MARGINS_W) * EXT_SZ, H_SPLIT);
+    printf("%s\n", handle->mpi_version);
 
-    if (settings->enable_nic)
-    {
-        all_col += NIC_W + MARGINS_W + SPLIT_W;
-        ret += sprintf(line[2] + ret, "%.*s╦", (NIC_W + MARGINS_W) * EXT_SZ, H_SPLIT);
-    }
+    /* Configuring the header */
+    ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_ROW_TYPE, FT_ROW_HEADER);
+    ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
+    ft_set_cell_span(table, 0, 0, num_columns);
+    ft_write_ln(table, TITLE " (" VERSION ")");
 
-    if (settings->enable_accel)
-    {
-        all_col += ACCEL_W + MARGINS_W + SPLIT_W;
-        ret += sprintf(line[2] + ret, "%.*s╦", (ACCEL_W + MARGINS_W) * EXT_SZ, H_SPLIT);
-    }
+    num_rows ++;
+}
+
+static void stdout_footer(Hpcat *handle)
+{
+    char omp_str[OMP_STR_MAX];
+
+    HpcatSettings_t *settings = &handle->settings;
 
     if (settings->enable_omp)
-    {
-        all_col += OMP_W + MARGINS_W + SPLIT_W;
-        ret += sprintf(line[2] + ret, "%.*s╦", (OMP_W + MARGINS_W) * EXT_SZ, H_SPLIT);
-    }
+        sprintf(omp_str, "%lu", num_omp_threads);
 
-    sprintf(line[2] + ret, "%.*s%s", (CPU_W + MARGINS_W) * EXT_SZ, H_SPLIT, settings->enable_banner ? "╣" : "╗");
-    if (!settings->enable_banner)
-    {
-        printf("%s\n", line[2]);
-        return;
-    }
+    ft_printf_ln(table, "TOTAL: %d|%d|%s", handle->num_nodes, handle->num_tasks,
+                                           (settings->enable_omp ? omp_str : ""));
 
-    sprintf(line[0], "╔%.*s╗", all_col * EXT_SZ, H_SPLIT);
+    const size_t start_cpu = HOST_COL + MPI_COL + (settings->enable_omp ? OMP_COL : 0);
+    ft_set_cell_span(table, num_rows, start_cpu, num_columns - start_cpu);
+    ft_set_cell_prop(table, num_rows, start_cpu, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
 
-    /* Center title */
-    const int s_left = (all_col - (int)strlen(TITLE)) / 2;
-    const int s_right = all_col - (s_left + (int)strlen(TITLE) + (int)strlen(VERSION));
-    sprintf(line[1], "║%.*s%s%.*s%s║", s_left, H_SPACE, TITLE, s_right, H_SPACE, VERSION);
-
-    printf("%s\n%s\n%s\n%s\n", handle->mpi_version, line[0], line[1], line[2]);
 }
 
 static void stdout_titles(Hpcat *handle)
 {
     HpcatSettings_t *settings = &handle->settings;
-    char line[2][STR_MAX] = { {'\0'} };
-    int ret[2] = { 0 };
+    char row_str[STR_MAX];
 
-    ret[0] += sprintf(line[0] + ret[0], "║ %" STR(HOST_W) "s ║ %" STR(MPI_W) "s ║", "HOST", "MPI");
-    ret[1] += sprintf(line[1] + ret[1], "║ %" STR(HOST_W) "s ║ %" STR(MPI_W) "s ║", "(NODE)", "RANK");
+    /* Compute start column of each section  */
+    const size_t start_omp = HOST_COL + MPI_COL;
+    const size_t start_cpu = HOST_COL + MPI_COL + (settings->enable_omp ? OMP_COL : 0);
+    const size_t start_accel = start_cpu + CPU_COL;
+    const size_t start_nic = start_accel + (settings->enable_accel ? ACCEL_COL : 0);
 
-    if (settings->enable_nic)
-    {
-        ret[0] += sprintf(line[0] + ret[0], " %" STR(NIC_W) "s ║", "NETWORK     ");
-        ret[1] += sprintf(line[1] + ret[1], " %" STR(NIC_W1) "s │ %" STR(NUMA_W) "s ║", "INTERFACE", "NUMA");
-    }
+    /* First title row */
+    sprintf(row_str, "HOST|MPI|%sCPU||%s%s", (settings->enable_omp ? "OMP|" : "" ),
+                                             (settings->enable_accel ? "|ACCELERATORS||" : ""),
+                                             (settings->enable_nic ? "|NETWORK|" : ""));
+    ft_printf_ln(table, row_str);
 
-    if (settings->enable_accel)
-    {
-        ret[0] += sprintf(line[0] + ret[0], " %" STR(ACCEL_W) "s ║", "ACCELERATORS                   ");
-        ret[1] += sprintf(line[1] + ret[1], " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║", "ID", "PCIE ADDR.", "NUMA");
-    }
+    ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
+    ft_set_cell_prop(table, num_rows, 0, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
+    ft_set_cell_prop(table, num_rows, 1, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
 
-    if (settings->enable_omp)
-    {
-        ret[0] += sprintf(line[0] + ret[0], " %" STR(OMP_W) "s ║", "OMP");
-        ret[1] += sprintf(line[1] + ret[1], " %" STR(OMP_W) "s ║", "ID");
-    }
-
-    sprintf(line[0] + ret[0], " %" STR(CPU_W) "s ║", "CPU                    ");
-    sprintf(line[1] + ret[1], " %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║", "LOGICAL PROC", "PHYSICAL CORE", "NUMA");
-    printf("%s\n%s\n", line[0], line[1]);
-}
-
-static void stdout_split_middle(Hpcat *handle, const bool high)
-{
-    HpcatSettings_t *settings = &handle->settings;
-    char line[STR_MAX] = { '\0' };
-    int ret = { 0 };
-
-    ret += sprintf(line + ret, "╠%.*s╬%.*s╬", (HOST_W + MARGINS_W) * EXT_SZ, H_SPLIT,
-                                               (MPI_W + MARGINS_W) * EXT_SZ, H_SPLIT);
-
-    if (settings->enable_nic)
-        ret += sprintf(line + ret, "%.*s%s%.*s%s", (NIC_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
-                                                   (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╬");
-
-    if (settings->enable_accel)
-        ret += sprintf(line + ret, "%.*s%s%.*s%s%.*s%s", (ACCEL_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
-                                                         (ACCEL_W2 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
-                                                           (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╬");
+    ft_set_cell_span(table, num_rows, start_cpu, 3);
 
     if (settings->enable_omp)
-        ret += sprintf(line + ret, "%.*s%s", (OMP_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╬");
-
-    sprintf(line + ret, "%.*s%s%.*s%s%.*s%s", (CPU_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
-                                              (CPU_W2 + MARGINS_W) * EXT_SZ, H_SPLIT, high ? "╪" : "╧",
-                                              (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╣");
-    printf("%s\n", line);
-}
-
-static void stdout_split_end(Hpcat *handle)
-{
-    HpcatSettings_t *settings = &handle->settings;
-    char line[STR_MAX] = { '\0' };
-    int ret = { 0 };
-
-    if (settings->enable_banner)
-        ret += sprintf(line + ret, "╠%.*s╬%.*s╬", (HOST_W + MARGINS_W) * EXT_SZ, H_SPLIT,
-                                                   (MPI_W + MARGINS_W) * EXT_SZ, H_SPLIT);
-    else
-        ret += sprintf(line + ret, "╚%.*s╩%.*s╩", (HOST_W + MARGINS_W) * EXT_SZ, H_SPLIT,
-                                                   (MPI_W + MARGINS_W) * EXT_SZ, H_SPLIT);
-
-    if (settings->enable_nic)
-        ret += sprintf(line + ret, "%.*s%s%.*s%s", (NIC_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
-                                                   (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╩");
-
+        ft_set_cell_prop(table, num_rows, start_omp, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
     if (settings->enable_accel)
-        ret += sprintf(line + ret, "%.*s%s%.*s%s%.*s%s", (ACCEL_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
-                                                         (ACCEL_W2 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
-                                                           (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╩");
+        ft_set_cell_span(table, num_rows, start_accel, 3);
+    if (settings->enable_nic)
+        ft_set_cell_span(table, num_rows, start_nic, 2);
+
+    num_rows++;
+
+    /* Second title row */
+    sprintf(row_str, "(NODE)|RANK|%sLOGICAL PROC|PHYSICAL CORE|NUMA%s%s",
+                                         (settings->enable_omp ? "ID|" : "" ),
+                                         (settings->enable_accel ? "|ID|PCIE ADDR.|NUMA" : ""),
+                                         (settings->enable_nic ? "|INTERFACE|NUMA" : ""));
+
+    ft_printf_ln(table, row_str);
+    ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
+    ft_set_cell_prop(table, num_rows, 0, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
+    ft_set_cell_prop(table, num_rows, 1, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
 
     if (settings->enable_omp)
-        ret += sprintf(line + ret, "%.*s%s", (OMP_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╩");
+        ft_set_cell_prop(table, num_rows, 2, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
 
-    sprintf(line + ret, "%.*s%s%.*s%s%.*s%s", (CPU_W1 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
-                                              (CPU_W2 + MARGINS_W) * EXT_SZ, H_SPLIT, "╧",
-                                              (NUMA_W + MARGINS_W) * EXT_SZ, H_SPLIT, "╝");
-    printf("%s\n", line);
-}
-
-static void stdout_node(Hpcat *handle, Task *task)
-{
-    HpcatSettings_t *settings = &handle->settings;
-    char line[STR_MAX] = { '\0' };
-    int ret = { 0 };
-
-    ret += sprintf(line + ret, "║ %" STR(HOST_W) "s ║ %" STR(MPI_W) "s ║", task->hostname, " ");
-
-    if (settings->enable_nic)
-        ret += sprintf(line + ret, " %" STR(NIC_W1) "s │ %" STR(NUMA_W) "s ║", " ", " ");
-
-    if (settings->enable_accel)
-        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║", " ", " ", " ");
-
-    if (settings->enable_omp)
-        ret += sprintf(line + ret, " %" STR(OMP_W) "s ║", " ");
-
-    sprintf(line + ret, " %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║", " ", " ", " ");
-    printf("%s\n", line);
+    num_rows++;
 }
 
 static void bitmap_to_str(char *str, Bitmap *bitmap, hwloc_bitmap_t tmp)
@@ -233,10 +147,7 @@ static void bitmap_to_str(char *str, Bitmap *bitmap, hwloc_bitmap_t tmp)
 static void stdout_task(Hpcat *handle, Task *task)
 {
     HpcatSettings_t *settings = &handle->settings;
-    char line[STR_MAX] = { '\0' };
-    int ret = { 0 };
-
-    char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
+    char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX], row_str[STR_MAX];
     char nic_numa_str[STR_MAX] = { 0 }, accel_numa_str[STR_MAX] = { 0 }, accel_visible_str[STR_MAX] = { 0 };
 
     hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
@@ -258,40 +169,27 @@ static void stdout_task(Hpcat *handle, Task *task)
     if (task->nic.num_nic > 0)
         sprintf(nic_numa_str, "%d", task->nic.numa_affinity);
 
-    ret += sprintf(line + ret, "║ %" STR(HOST_W) "s ║ %" STR(MPI_W) "d ║", " ", task->id);
-
-    if (settings->enable_nic)
-        ret += sprintf(line + ret, " %" STR(NIC_W1) "s │ %" STR(NUMA_W) "s ║", task->nic.name, nic_numa_str);
-
-    if (settings->enable_accel)
-        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║",
-                       accel_visible_str, task->accel.pciaddr, accel_numa_str);
-
-    if (settings->enable_omp)
-        ret += sprintf(line + ret, " %.*s ║", OMP_W, H_DASH);
-
-    sprintf(line + ret, " %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║", hw_thread_str, core_str, numa_str);
-    printf("%s\n", line);
+    sprintf(row_str, "|%d|%s%s|%s|%s%s%s%s%s%s%s%s%s%s%s", task->id,
+                                     (settings->enable_omp ? "---|" : "" ),
+                                     hw_thread_str, core_str, numa_str,
+                                     (settings->enable_accel ? "|" : ""),
+                                     (settings->enable_accel ? accel_visible_str : ""),
+                                     (settings->enable_accel ? "|" : ""),
+                                     (settings->enable_accel ? task->accel.pciaddr : ""),
+                                     (settings->enable_accel ? "|" : ""),
+                                     (settings->enable_accel ? accel_numa_str : ""),
+                                     (settings->enable_nic ? "|" : ""),
+                                     (settings->enable_nic ? task->nic.name : ""),
+                                     (settings->enable_nic ? "|" : ""),
+                                     (settings->enable_nic ? nic_numa_str : ""));
+    ft_printf_ln(table, row_str);
+    num_rows++;
 }
 
 static void stdout_omp(Hpcat *handle, Task *task)
 {
     HpcatSettings_t *settings = &handle->settings;
-    char line[STR_MAX] = { '\0' };
-    int ret = { 0 };
-
     char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
-
-    if (!settings->enable_omp)
-        return;
-
-    ret += sprintf(line + ret, "║ %" STR(HOST_W) "s ║ %" STR(MPI_W) "s ║", " ", " ");
-
-    if (settings->enable_nic)
-        ret += sprintf(line + ret, " %" STR(NIC_W1) "s │ %" STR(NUMA_W) "s ║", " ", " ");
-
-    if (settings->enable_accel)
-        ret += sprintf(line + ret, " %" STR(ACCEL_W1) "s │ %" STR(ACCEL_W2) "s │ %" STR(NUMA_W) "s ║", " ", " ", " ");
 
     hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
     if (bitmap == NULL)
@@ -305,16 +203,12 @@ static void stdout_omp(Hpcat *handle, Task *task)
         bitmap_to_str(core_str, (Bitmap*)&task->affinity.core_affinity, bitmap);
         bitmap_to_str(numa_str, &task->affinity.numa_affinity, bitmap);
 
-        printf("%s %" STR(OMP_W) "d ║ %" STR(CPU_W1) "s │ %" STR(CPU_W2) "s │ %" STR(NUMA_W) "s ║\n", line, thread->id, hw_thread_str, core_str, numa_str);
+        ft_printf_ln(table, "||%d|%s|%s|%s", thread->id, hw_thread_str, core_str, numa_str);
+        num_rows++;
+        num_omp_threads++;
     }
 
     hwloc_bitmap_free(bitmap);
-}
-
-static void stdout_footer(Hpcat *handle)
-{
-    printf("║ %.*s%s%4d ║ %" STR(MPI_W) "d ║\n" , HOST_W - 11, H_SPACE , "TOTAL: ", handle->num_nodes, handle->num_tasks);
-    printf("╚%.*s╩%.*s╝\n", (HOST_W + MARGINS_W) * EXT_SZ, H_SPLIT, (MPI_W + MARGINS_W) * EXT_SZ, H_SPLIT);
 }
 
 /**
@@ -324,37 +218,60 @@ static void stdout_footer(Hpcat *handle)
  */
 void hpcat_display_stdout(Hpcat *handle, Task *task)
 {
+    HpcatSettings_t *settings = &handle->settings;
+
     /* First (reordered) rank prints the header */
     if (task->is_first_rank)
     {
-        stdout_header(handle);
+        /* Initialize the table */
+        table = ft_create_table();
+        ft_set_border_style(table, FT_SOLID_ROUND_STYLE);
+        ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_LIGHT_GRAY);
+        ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
+
+        /* Compute amount of columns */
+        num_columns = HOST_COL + MPI_COL + CPU_COL;
+        if (settings->enable_omp)
+            num_columns += OMP_COL;
+        if (settings->enable_accel)
+            num_columns += ACCEL_COL;
+        if (settings->enable_nic)
+            num_columns += NIC_COL;
+
+        if (settings->enable_banner)
+            stdout_header(handle);
+
         stdout_titles(handle);
     }
 
     /* Node level */
     if (task->is_first_node_rank)
     {
-        stdout_split_middle(handle, true);
-        stdout_node(handle, task);
+        ft_add_separator(table);
+        ft_write_ln(table, task->hostname);
+        num_rows++;
     }
 
     /* Task level */
     stdout_task(handle, task);
 
     /* OMP thread level */
-    stdout_omp(handle, task);
+    if (settings->enable_omp)
+        stdout_omp(handle, task);
 
     if (task->is_last_rank)
     {
-        if (handle->settings.enable_banner)
+        if (settings->enable_banner)
         {
-            stdout_split_middle(handle, false);
+            ft_add_separator(table);
             stdout_titles(handle);
-            stdout_split_end(handle);
+            ft_add_separator(table);
             stdout_footer(handle);
         }
-        else
-            stdout_split_end(handle);
+
+        /* Dump the table */
+        printf("%s\n", ft_to_string(table));
+        ft_destroy_table(table);
     }
 }
 

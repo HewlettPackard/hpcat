@@ -33,7 +33,8 @@ Dependencies
 * **Intel OneAPI Level Zero** (Optional, for Intel GPUs)
 * **NVIDIA NVML** (Optional, for NVIDIA GPUs)
 * **MPI**
-* **[hwloc](https://github.com/open-mpi/hwloc)**
+* **[hwloc](https://github.com/open-mpi/hwloc)** (built with hpcat)
+* **[libfort](https://github.com/seleznevae/libfort)** (built with hpcat)
 
 
 Installation

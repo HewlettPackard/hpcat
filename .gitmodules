@@ -1,3 +1,6 @@
 [submodule "submodules/hwloc"]
 	path = submodules/hwloc
 	url = https://github.com/open-mpi/hwloc
+[submodule "submodules/libfort"]
+	path = submodules/libfort
+	url = https://github.com/seleznevae/libfort.git
