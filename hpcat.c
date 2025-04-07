@@ -24,7 +24,6 @@
 * URL       https://github.com/HewlettPackard/hpcat
 ******************************************************************************/
 
-#define _GNU_SOURCE
 #include <dlfcn.h>
 #include <unistd.h>
 #include <string.h>
@@ -264,7 +263,7 @@ void MPI_Init_verbose(Task *task, int *nargs, char **args[])
         FATAL("Error: dup unable to duplicate stderr: %s\n", strerror(errno));
 
     int pipefd[2];
-    if (pipe2(pipefd, 0) == -1)
+    if (pipe(pipefd) == -1)
         FATAL("Error: unable to create a pipe: %s\n", strerror(errno));
 
     /* sterr will now go to the pipe */
@@ -310,7 +309,7 @@ void MPI_Finalize_noverbose(void)
         FATAL("Error: dup unable to duplicate stdout: %s\n", strerror(errno));
 
     int pipefd[2];
-    if (pipe2(pipefd, 0) == -1)
+    if (pipe(pipefd) == -1)
         FATAL("Error: unable to create a pipe: %s\n", strerror(errno));
 
     if (dup2(pipefd[1], fileno(stdout)) == -1)
