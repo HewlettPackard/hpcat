@@ -88,8 +88,8 @@ void get_cpu_numa_affinity(Affinity *affinity)
     if (hw_thread_affinity == NULL)
         FATAL("Error: unable to allocate a hwloc bitmap for CPU (hardware thread) affinity. Exiting.\n");
 
-    if (hwloc_get_cpubind(topology, hw_thread_affinity,  HWLOC_CPUBIND_THREAD) != 0)
-       FATAL("Error: unable to retrieve CPU binding with hwloc: %s. Exiting.\n", strerror(errno));
+    if (hwloc_get_cpubind(topology, hw_thread_affinity, HWLOC_CPUBIND_THREAD) != 0)
+        FATAL("Error: unable to retrieve CPU binding with hwloc: %s. Exiting.\n", strerror(errno));
 
     /* Retrieving CPU core (first hardware thread) affinity */
     hwloc_bitmap_t core_affinity = hwloc_bitmap_alloc();
@@ -376,6 +376,9 @@ void hpcat_init(Hpcat *hpcat, Task *task)
     hpcat->settings.enable_accel = (accel_sum > 0);
 
     VERBOSE(hpcat, "Verbose: %d visible accelerators (sum accross all tasks).\n", accel_sum);
+
+    if (!hpcat->settings.enable_omp)
+        return;
 
     /* Retrieving OMP CPU affinities and thread IDs */
     #pragma omp parallel

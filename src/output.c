@@ -199,9 +199,9 @@ static void stdout_omp(Hpcat *handle, Task *task)
     {
         Thread *thread = &task->threads[i];
 
-        bitmap_to_str(hw_thread_str, (Bitmap*)&task->affinity.hw_thread_affinity, bitmap);
-        bitmap_to_str(core_str, (Bitmap*)&task->affinity.core_affinity, bitmap);
-        bitmap_to_str(numa_str, &task->affinity.numa_affinity, bitmap);
+        bitmap_to_str(hw_thread_str, (Bitmap*)&thread->affinity.hw_thread_affinity, bitmap);
+        bitmap_to_str(core_str, (Bitmap*)&thread->affinity.core_affinity, bitmap);
+        bitmap_to_str(numa_str, &thread->affinity.numa_affinity, bitmap);
 
         ft_printf_ln(table, "||%d|%s|%s|%s", thread->id, hw_thread_str, core_str, numa_str);
         num_rows++;
