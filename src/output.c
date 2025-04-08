@@ -54,6 +54,8 @@ ft_table_t *table = NULL;
 size_t num_columns = 0;
 size_t num_rows = 0;
 size_t num_omp_threads = 0;
+size_t start_omp, start_cpu, start_accel, start_nic;
+
 
 static void stdout_header(Hpcat *handle)
 {
@@ -62,6 +64,13 @@ static void stdout_header(Hpcat *handle)
     printf("%s\n", handle->mpi_version);
 
     /* Configuring the header */
+    if (settings->enable_color)
+    {
+        ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_BLACK);
+        ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_CELL_BG_COLOR, FT_COLOR_YELLOW);
+        ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+    }
+
     ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_ROW_TYPE, FT_ROW_HEADER);
     ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
     ft_set_cell_span(table, 0, 0, num_columns);
@@ -81,11 +90,11 @@ static void stdout_footer(Hpcat *handle)
 
     ft_printf_ln(table, "TOTAL: %d|%d|%s", handle->num_nodes, handle->num_tasks,
                                            (settings->enable_omp ? omp_str : ""));
+    if (settings->enable_color)
+        ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
 
-    const size_t start_cpu = HOST_COL + MPI_COL + (settings->enable_omp ? OMP_COL : 0);
     ft_set_cell_span(table, num_rows, start_cpu, num_columns - start_cpu);
     ft_set_cell_prop(table, num_rows, start_cpu, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
-
 }
 
 static void stdout_titles(Hpcat *handle)
@@ -93,17 +102,17 @@ static void stdout_titles(Hpcat *handle)
     HpcatSettings_t *settings = &handle->settings;
     char row_str[STR_MAX];
 
-    /* Compute start column of each section  */
-    const size_t start_omp = HOST_COL + MPI_COL;
-    const size_t start_cpu = HOST_COL + MPI_COL + (settings->enable_omp ? OMP_COL : 0);
-    const size_t start_accel = start_cpu + CPU_COL;
-    const size_t start_nic = start_accel + (settings->enable_accel ? ACCEL_COL : 0);
-
     /* First title row */
     sprintf(row_str, "HOST|MPI|%sCPU||%s%s", (settings->enable_omp ? "OMP|" : "" ),
                                              (settings->enable_accel ? "|ACCELERATORS||" : ""),
                                              (settings->enable_nic ? "|NETWORK|" : ""));
     ft_printf_ln(table, row_str);
+
+    if (settings->enable_color)
+    {
+        ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+        ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
+    }
 
     ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
     ft_set_cell_prop(table, num_rows, 0, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
@@ -127,6 +136,21 @@ static void stdout_titles(Hpcat *handle)
                                          (settings->enable_nic ? "|INTERFACE|NUMA" : ""));
 
     ft_printf_ln(table, row_str);
+
+    if (settings->enable_color)
+    {
+        ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_ITALIC);
+        ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
+        ft_set_cell_prop(table, num_rows, 0, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+        ft_set_cell_prop(table, num_rows, 1, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+
+        if (settings->enable_omp)
+            ft_set_cell_prop(table, num_rows, start_omp, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+
+        if (settings->enable_accel)
+            ft_set_cell_prop(table, num_rows, start_accel, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_ITALIC);
+    }
+
     ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
     ft_set_cell_prop(table, num_rows, 0, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
     ft_set_cell_prop(table, num_rows, 1, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
@@ -203,6 +227,9 @@ static void stdout_omp(Hpcat *handle, Task *task)
         bitmap_to_str(core_str, (Bitmap*)&thread->affinity.core_affinity, bitmap);
         bitmap_to_str(numa_str, &thread->affinity.numa_affinity, bitmap);
 
+        if (settings->enable_color)
+            ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_YELLOW);
+
         ft_printf_ln(table, "||%d|%s|%s|%s", thread->id, hw_thread_str, core_str, numa_str);
         num_rows++;
         num_omp_threads++;
@@ -237,6 +264,24 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
             num_columns += ACCEL_COL;
         if (settings->enable_nic)
             num_columns += NIC_COL;
+
+        /* Compute start column of each section */
+        start_omp = HOST_COL + MPI_COL;
+        start_cpu = HOST_COL + MPI_COL + (settings->enable_omp ? OMP_COL : 0);
+        start_accel = start_cpu + CPU_COL;
+        start_nic = start_accel + (settings->enable_accel ? ACCEL_COL : 0);
+
+        if (settings->enable_color)
+        {
+            ft_set_cell_prop(table, FT_ANY_ROW, 0, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+            ft_set_cell_prop(table, FT_ANY_ROW, 1, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+
+            if (settings->enable_omp)
+                ft_set_cell_prop(table, FT_ANY_ROW, start_omp, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+
+            if (settings->enable_accel)
+                ft_set_cell_prop(table, FT_ANY_ROW, start_accel, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+        }
 
         if (settings->enable_banner)
             stdout_header(handle);

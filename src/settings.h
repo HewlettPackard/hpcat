@@ -45,6 +45,7 @@ typedef struct HpcatSettings
     bool          enable_nic;
     bool          enable_omp;
     bool          enable_banner;
+    bool          enable_color;
     bool          enable_verbose;
     OutputType_t  output_type;
 } HpcatSettings_t;

@@ -16,6 +16,8 @@ as an option.
 > accelerators, allowing the same binary to be used across different partitions,
 > whether or not accelerators are present.
 
+![HPCAT Output](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-main-example.png?raw=true)
+
 
 Table of Contents
 -----------------
@@ -24,6 +26,10 @@ Table of Contents
 1. [Installation](#installation)
 1. [Usage](#usage)
 1. [Examples](#examples)
+   - [CPU nodes (AMD EPYC Genoa)](#antero-amd-cpus-epyc-genoa-nodes)
+   - [GPU nodes (AMD Instinct MI250X)](#bardpeak-amd-gpus-instinct-mi250x-nodes)
+   - [GPU nodes (Intel Max 1550)](#exascale-compute-blade-intel-gpus-max-1550-nodes)
+   - [GPU nodes (NVIDIA A100)](#grizzlypeak-blade-nvidia-gpus-a100-nodes)
 
 
 Dependencies
@@ -33,8 +39,8 @@ Dependencies
 * **Intel OneAPI Level Zero** (Optional, for Intel GPUs)
 * **NVIDIA NVML** (Optional, for NVIDIA GPUs)
 * **MPI**
-* **[hwloc](https://github.com/open-mpi/hwloc)** (built with hpcat)
-* **[libfort](https://github.com/seleznevae/libfort)** (built with hpcat)
+* **[hwloc](https://github.com/open-mpi/hwloc)** (built with HPCAT)
+* **[libfort](https://github.com/seleznevae/libfort)** (built with HPCAT)
 
 
 Installation
@@ -76,10 +82,12 @@ Usage
 Arguments are :
 
         --disable-accel        Don't display GPU affinities
+        --disable-color        Don't use colors in the output
         --disable-nic          Don't display Network affinities
         --disable-omp          Don't display OpenMP affinities
+        --enable-color         Using colors in the bash output
         --enable-omp           Display OpenMP affinities
-        --no-banner            Do not display header/footer
+        --no-banner            Don't display header/footer
     -v, --verbose              Make the operations talkative
     -y, --yaml                 YAML output
     -?, --help                 Give this help list
@@ -90,131 +98,29 @@ Arguments are :
 Examples
 --------
 
-**Bardpeak (AMD GPUs MI250x) nodes:**
+### Antero [AMD CPUs EPYC Genoa] nodes:
 
-    % MPICH_OFI_NIC_POLICY=NUMA srun -p bardpeak -N2 --exclusive --tasks-per-node=8 -c 8 --hint=nomultithread \
-    ./gpu-affinity.sh ./hpcat --no-banner
-    ╔═════════════════╦══════╦══════════════════════╦═════════════════════════════════════════════╦═════════════════════════════════════╗
-    ║            HOST ║  MPI ║         NETWORK      ║                 ACCELERATORS                ║                          CPU        ║
-    ║          (NODE) ║ RANK ║  INTERFACE │    NUMA ║      ID │              PCIE ADDR. │    NUMA ║                   CORE ID │    NUMA ║
-    ╠═════════════════╬══════╬════════════╪═════════╬═════════╪═════════════════════════╪═════════╬═══════════════════════════╪═════════╣
-    ║      pinoak0028 ║      ║            │         ║         │                         │         ║                           │         ║
-    ║                 ║    0 ║       cxi2 │       0 ║       4 │                      d1 │       0 ║                       0-7 │       0 ║
-    ║                 ║    1 ║       cxi2 │       0 ║       5 │                      d6 │       0 ║                      8-15 │       0 ║
-    ║                 ║    2 ║       cxi1 │       1 ║       2 │                      c9 │       1 ║                     16-23 │       1 ║
-    ║                 ║    3 ║       cxi1 │       1 ║       3 │                      ce │       1 ║                     24-31 │       1 ║
-    ║                 ║    4 ║       cxi3 │       2 ║       6 │                      d9 │       2 ║                     32-39 │       2 ║
-    ║                 ║    5 ║       cxi3 │       2 ║       7 │                      de │       2 ║                     40-47 │       2 ║
-    ║                 ║    6 ║       cxi0 │       3 ║       0 │                      c1 │       3 ║                     48-55 │       3 ║
-    ║                 ║    7 ║       cxi0 │       3 ║       1 │                      c6 │       3 ║                     56-63 │       3 ║
-    ╠═════════════════╬══════╬════════════╪═════════╬═════════╪═════════════════════════╪═════════╬═══════════════════════════╪═════════╣
-    ║      pinoak0029 ║      ║            │         ║         │                         │         ║                           │         ║
-    ║                 ║    8 ║       cxi2 │       0 ║       4 │                      d1 │       0 ║                       0-7 │       0 ║
-    ║                 ║    9 ║       cxi2 │       0 ║       5 │                      d6 │       0 ║                      8-15 │       0 ║
-    ║                 ║   10 ║       cxi1 │       1 ║       2 │                      c9 │       1 ║                     16-23 │       1 ║
-    ║                 ║   11 ║       cxi1 │       1 ║       3 │                      ce │       1 ║                     24-31 │       1 ║
-    ║                 ║   12 ║       cxi3 │       2 ║       6 │                      d9 │       2 ║                     32-39 │       2 ║
-    ║                 ║   13 ║       cxi3 │       2 ║       7 │                      de │       2 ║                     40-47 │       2 ║
-    ║                 ║   14 ║       cxi0 │       3 ║       0 │                      c1 │       3 ║                     48-55 │       3 ║
-    ║                 ║   15 ║       cxi0 │       3 ║       1 │                      c6 │       3 ║                     56-63 │       3 ║
-    ╚═════════════════╩══════╩════════════╧═════════╩═════════╧═════════════════════════╧═════════╩═══════════════════════════╧═════════╝
+    OMP_NUM_THREADS=2 srun -p antero -N2 --tasks-per-node=8 -c 24 --hint=nomultithread --pty bin/hpcat --no-banner
+
+![HPCAT Antero](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-antero-example.png?raw=true)
 
 
-**Antero (AMD CPUs Genoa) nodes:**
+### Bardpeak [AMD GPUs Instinct MI250X] nodes:
 
-    % OMP_NUM_THREADS=2 srun -p antero -N2 --tasks-per-node=8 -c 24 --hint=nomultithread ./hpcat --no-banner
-    ╔═════════════════╦══════╦══════════════════════╦══════╦═════════════════════════════════════╗
-    ║            HOST ║  MPI ║         NETWORK      ║  OMP ║                          CPU        ║
-    ║          (NODE) ║ RANK ║  INTERFACE │    NUMA ║   ID ║                   CORE ID │    NUMA ║
-    ╠═════════════════╬══════╬════════════╪═════════╬══════╬═══════════════════════════╪═════════╣
-    ║      pinoak0051 ║      ║            │         ║      ║                           │         ║
-    ║                 ║    0 ║       cxi0 │       2 ║ ---- ║                      0-23 │       0 ║
-    ║                 ║      ║            │         ║    0 ║                      0-11 │       0 ║
-    ║                 ║      ║            │         ║    1 ║                     12-23 │       0 ║
-    ║                 ║    1 ║       cxi0 │       2 ║ ---- ║                     24-47 │       1 ║
-    ║                 ║      ║            │         ║    0 ║                     24-35 │       1 ║
-    ║                 ║      ║            │         ║    1 ║                     36-47 │       1 ║
-    ║                 ║    2 ║       cxi0 │       2 ║ ---- ║                     48-71 │       2 ║
-    ║                 ║      ║            │         ║    0 ║                     48-59 │       2 ║
-    ║                 ║      ║            │         ║    1 ║                     60-71 │       2 ║
-    ║                 ║    3 ║       cxi0 │       2 ║ ---- ║                     72-95 │       3 ║
-    ║                 ║      ║            │         ║    0 ║                     72-83 │       3 ║
-    ║                 ║      ║            │         ║    1 ║                     84-95 │       3 ║
-    ║                 ║    4 ║       cxi1 │       6 ║ ---- ║                    96-119 │       4 ║
-    ║                 ║      ║            │         ║    0 ║                    96-107 │       4 ║
-    ║                 ║      ║            │         ║    1 ║                   108-119 │       4 ║
-    ║                 ║    5 ║       cxi1 │       6 ║ ---- ║                   120-143 │       5 ║
-    ║                 ║      ║            │         ║    0 ║                   120-131 │       5 ║
-    ║                 ║      ║            │         ║    1 ║                   132-143 │       5 ║
-    ║                 ║    6 ║       cxi1 │       6 ║ ---- ║                   144-167 │       6 ║
-    ║                 ║      ║            │         ║    0 ║                   144-155 │       6 ║
-    ║                 ║      ║            │         ║    1 ║                   156-167 │       6 ║
-    ║                 ║    7 ║       cxi1 │       6 ║ ---- ║                   168-191 │       7 ║
-    ║                 ║      ║            │         ║    0 ║                   168-179 │       7 ║
-    ║                 ║      ║            │         ║    1 ║                   180-191 │       7 ║
-    ╠═════════════════╬══════╬════════════╪═════════╬══════╬═══════════════════════════╪═════════╣
-    ║      pinoak0052 ║      ║            │         ║      ║                           │         ║
-    ║                 ║    8 ║       cxi0 │       2 ║ ---- ║                      0-23 │       0 ║
-    ║                 ║      ║            │         ║    0 ║                      0-11 │       0 ║
-    ║                 ║      ║            │         ║    1 ║                     12-23 │       0 ║
-    ║                 ║    9 ║       cxi0 │       2 ║ ---- ║                     24-47 │       1 ║
-    ║                 ║      ║            │         ║    0 ║                     24-35 │       1 ║
-    ║                 ║      ║            │         ║    1 ║                     36-47 │       1 ║
-    ║                 ║   10 ║       cxi0 │       2 ║ ---- ║                     48-71 │       2 ║
-    ║                 ║      ║            │         ║    0 ║                     48-59 │       2 ║
-    ║                 ║      ║            │         ║    1 ║                     60-71 │       2 ║
-    ║                 ║   11 ║       cxi0 │       2 ║ ---- ║                     72-95 │       3 ║
-    ║                 ║      ║            │         ║    0 ║                     72-83 │       3 ║
-    ║                 ║      ║            │         ║    1 ║                     84-95 │       3 ║
-    ║                 ║   12 ║       cxi1 │       6 ║ ---- ║                    96-119 │       4 ║
-    ║                 ║      ║            │         ║    0 ║                    96-107 │       4 ║
-    ║                 ║      ║            │         ║    1 ║                   108-119 │       4 ║
-    ║                 ║   13 ║       cxi1 │       6 ║ ---- ║                   120-143 │       5 ║
-    ║                 ║      ║            │         ║    0 ║                   120-131 │       5 ║
-    ║                 ║      ║            │         ║    1 ║                   132-143 │       5 ║
-    ║                 ║   14 ║       cxi1 │       6 ║ ---- ║                   144-167 │       6 ║
-    ║                 ║      ║            │         ║    0 ║                   144-155 │       6 ║
-    ║                 ║      ║            │         ║    1 ║                   156-167 │       6 ║
-    ║                 ║   15 ║       cxi1 │       6 ║ ---- ║                   168-191 │       7 ║
-    ║                 ║      ║            │         ║    0 ║                   168-179 │       7 ║
-    ║                 ║      ║            │         ║    1 ║                   180-191 │       7 ║
-    ╚═════════════════╩══════╩════════════╧═════════╩══════╩═══════════════════════════╧═════════╝
+    MPICH_OFI_NIC_POLICY=NUMA srun -p bardpeak -N2 --tasks-per-node=8 -c 8 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
+
+![HPCAT Bardpeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-bardpeak-example.png?raw=true)
 
 
-**ParryPeak (AMD APUs MI300A) node:**
+### Exascale Compute Blade [Intel GPUs Max 1550] nodes:
 
-    % srun -p parrypeak -N 1 -n 4 -c 24 --hint=nomultithread ./gpu-affinity.sh ./hpcat --no-banner
-    ╔═════════════════╦══════╦═════════════════════════════════════════════╦═════════════════════════════════════╗
-    ║            HOST ║  MPI ║                 ACCELERATORS                ║                          CPU        ║
-    ║          (NODE) ║ RANK ║      ID │              PCIE ADDR. │    NUMA ║                   CORE ID │    NUMA ║
-    ╠═════════════════╬══════╬═════════╪═════════════════════════╪═════════╬═══════════════════════════╪═════════╣
-    ║      pinoak0001 ║      ║         │                         │         ║                           │         ║
-    ║                 ║    0 ║       0 │                      00 │       0 ║                      0-23 │       0 ║
-    ║                 ║    1 ║       1 │                      01 │       1 ║                     24-47 │       1 ║
-    ║                 ║    2 ║       2 │                      02 │       2 ║                     48-71 │       2 ║
-    ║                 ║    3 ║       3 │                      03 │       3 ║                     72-95 │       3 ║
-    ╚═════════════════╩══════╩═════════╧═════════════════════════╧═════════╩═══════════════════════════╧═════════╝
+    MPICH_OFI_NIC_POLICY=NUMA srun -p ecb -N 2 --tasks-per-node=12 -c 8 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
+
+![HPCAT ECB](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-ecb-example.png?raw=true)
 
 
-**Exascale Compute Blade (Intel GPU Max 1550) node:**
+### Grizzlypeak Blade [NVIDIA GPUs A100] nodes:
 
-    % srun -p ecb -N 1 -n 12 -c 8 --hint=nomultithread ./gpu-affinity.sh ./hpcat --no-banner
-    ╔═════════════════╦══════╦═══════════════════════════════════════════════════╦════════════════════════════════════════════════╗
-    ║            HOST ║  MPI ║                   ACCELERATORS                    ║                        CPU                     ║
-    ║          (NODE) ║ RANK ║      ID │                    PCIE ADDR. │    NUMA ║         LOGICAL PROC │ PHYSICAL CORE │    NUMA ║
-    ╠═════════════════╬══════╬═════════╪═══════════════════════════════╪═════════╬══════════════════════╪═══════════════╪═════════╣
-    ║       nid000014 ║      ║         │                               │         ║                      │               │         ║
-    ║                 ║    0 ║       0 │                          0:18 │       0 ║                  0-7 │           0-7 │       0 ║
-    ║                 ║    1 ║       1 │                          0:18 │       0 ║                 8-15 │          8-15 │       0 ║
-    ║                 ║    2 ║       2 │                          0:42 │       0 ║                16-23 │         16-23 │       0 ║
-    ║                 ║    3 ║       3 │                          0:42 │       0 ║                24-31 │         24-31 │       0 ║
-    ║                 ║    4 ║       4 │                          0:6c │       0 ║                32-39 │         32-39 │       0 ║
-    ║                 ║    5 ║       5 │                          0:6c │       0 ║                40-47 │         40-47 │       0 ║
-    ║                 ║    6 ║       6 │                          1:18 │       1 ║                52-59 │         52-59 │       1 ║
-    ║                 ║    7 ║       7 │                          1:18 │       1 ║                60-67 │         60-67 │       1 ║
-    ║                 ║    8 ║       8 │                          1:42 │       1 ║                68-75 │         68-75 │       1 ║
-    ║                 ║    9 ║       9 │                          1:42 │       1 ║                76-83 │         76-83 │       1 ║
-    ║                 ║   10 ║      10 │                          1:6c │       1 ║                84-91 │         84-91 │       1 ║
-    ║                 ║   11 ║      11 │                          1:6c │       1 ║                92-99 │         92-99 │       1 ║
-    ╚═════════════════╩══════╩═════════╧═══════════════════════════════╧═════════╩══════════════════════╧═══════════════╧═════════╝
+    MPICH_OFI_NIC_POLICY=NUMA srun -p griz512 -N 2 --tasks-per-node=4 -c 16 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
 
+![HPCAT Grizzlypeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-grizzlypeak-example.png?raw=true)
