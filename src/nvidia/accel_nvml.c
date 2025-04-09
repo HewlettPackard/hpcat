@@ -59,6 +59,51 @@ int hpcat_accel_count(void)
     return (nvmlDeviceGetCount(&dev_count) == NVML_SUCCESS) ? (int)dev_count : -1;
 }
 
+static int get_device_id_array(int *ids, int *dev_count)
+{
+    int count = 0;
+
+    char *visible_env = getenv("CUDA_VISIBLE_DEVICES");
+    if (visible_env == NULL)
+    {
+        count = hpcat_accel_count();
+        for (int i = 0; i < count; i++)
+            ids[i] = i;
+    }
+    else
+    {
+        hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
+        if (bitmap == NULL)
+        {
+            printf("Failed to allocate bitmap\n");
+            return -1;
+        }
+
+        if (strlist_to_bitmap(bitmap, visible_env) != 0)
+        {
+            printf("Failed to convert string list to bitmap\n");
+            return -1;
+        }
+
+        count = hwloc_bitmap_weight(bitmap);
+        if (count > MAX_DEVICES)
+        {
+            printf("Device count is larger than the upper limit\n");
+            return -1;
+        }
+
+        ids[0] = hwloc_bitmap_first(bitmap);
+
+        for (int i = 1; i < count; i++)
+            ids[i] = hwloc_bitmap_next(bitmap, ids[i - 1]);
+
+        hwloc_bitmap_free(bitmap);
+    }
+
+    *dev_count = count;
+    return 0;
+}
+
 /**
  *  Format a list (comma separated) of the PCIe addresses of all
  *  accelerators found.
@@ -69,7 +114,14 @@ int hpcat_accel_count(void)
  */
 int hpcat_accel_pciaddr_list_str(char *buff, const int max_buff_size)
 {
-    const int dev_count = hpcat_accel_count();
+    int ids[MAX_DEVICES] = {0};
+    int dev_count = 0;
+
+    /* List of devices */
+    int ret = get_device_id_array(ids, &dev_count);
+    if (ret != 0)
+        return -1;
+
     if (dev_count <= 0)
         return -1;
 
@@ -82,16 +134,16 @@ int hpcat_accel_pciaddr_list_str(char *buff, const int max_buff_size)
         nvmlDevice_t device;
         nvmlPciInfo_t pci_info;
 
-        nvmlReturn_t res = nvmlDeviceGetHandleByIndex(i, &device);
+        nvmlReturn_t res = nvmlDeviceGetHandleByIndex(ids[i], &device);
         if (NVML_SUCCESS != res)
         {
-            printf("Failed to get handle for device %u: %s\n", i, nvmlErrorString(res));
+            printf("Failed to get handle for device %u: %s\n", ids[i], nvmlErrorString(res));
             return -1;
         }
 
         res = nvmlDeviceGetPciInfo(device, &pci_info);
         if (NVML_SUCCESS != res) {
-            printf("Failed to get PCI info for device %u: %s\n", i, nvmlErrorString(res));
+            printf("Failed to get PCI info for device %u: %s\n", ids[i], nvmlErrorString(res));
             return -1;
         }
 
@@ -133,7 +185,14 @@ int hpcat_accel_visible_bitmap(hwloc_bitmap_t bitmap)
  */
 int hpcat_accel_numa_bitmap(hwloc_bitmap_t numa_affinity)
 {
-    const int dev_count = hpcat_accel_count();
+    int ids[MAX_DEVICES] = {0};
+    int dev_count = 0;
+
+    /* List of devices */
+    int ret = get_device_id_array(ids, &dev_count);
+    if (ret != 0)
+        return -1;
+
     if (dev_count <= 0)
         return -1;
 
@@ -142,16 +201,16 @@ int hpcat_accel_numa_bitmap(hwloc_bitmap_t numa_affinity)
         nvmlDevice_t device;
         nvmlPciInfo_t pci;
 
-        nvmlReturn_t res = nvmlDeviceGetHandleByIndex(i, &device);
+        nvmlReturn_t res = nvmlDeviceGetHandleByIndex(ids[i], &device);
         if (NVML_SUCCESS != res)
         {
-            printf("Failed to get handle for device %u: %s\n", i, nvmlErrorString(res));
+            printf("Failed to get handle for device %u: %s\n", ids[i], nvmlErrorString(res));
             return -1;
         }
 
         res = nvmlDeviceGetPciInfo(device, &pci);
         if (NVML_SUCCESS != res) {
-            printf("Failed to get PCI info for device %u: %s\n", i, nvmlErrorString(res));
+            printf("Failed to get PCI info for device %u: %s\n", ids[i], nvmlErrorString(res));
             return -1;
         }
 
