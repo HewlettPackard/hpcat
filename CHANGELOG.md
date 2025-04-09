@@ -3,7 +3,28 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
-## [0.5] - 2025-03-18
+## [v0.6] - 2025-04-09
+
+### Added
+
+- Support for Intel GPUs via oneAPI Level Zero.
+- Colored tabular output.
+
+### Changed
+
+- Switched to CMake for the build system and added a configuration wrapper.
+- Replaced internal table printing with libfort.
+- Now building the hwloc submodule as part of HPCAT.
+- Replaced pipe2 with pipe (no flags were used).
+- Always display the accelerator PCIe domain and added brackets around each PCIe address.
+
+### Fixed
+
+- Resolved inconsistent output related to OpenMP thread affinities.
+- Resolved impact of CUDA_VISIBLE_DEVICES being ignored by NVML.
+
+
+## [v0.5] - 2025-03-18
 
 ### Added
 
@@ -12,11 +33,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- First rank gathers all data prints the output
-- Disable OpenMP output by default if only one thread is used
+- First rank gathers all data prints the output.
+- Disable OpenMP output by default if only one thread is used.
 
 
-## [0.4] - 2024-12-17
+## [v0.4] - 2024-12-17
 
 ### Added
 
@@ -28,6 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Rely on the search path to check libnvidia-ml and libamdhip64 availabilities.
 - Auto accelerator disabling: now counts all visible accelerators (allreduce) and disables the column if zero.
 
-[0.5]: https://github.com/HewlettPackard/hpcat/compare/v0.4...v0.5
-[0.4]: https://github.com/HewlettPackard/hpcat/compare/v0.3...v0.4
+[v0.6]: https://github.com/HewlettPackard/hpcat/compare/v0.5...v0.6
+[v0.5]: https://github.com/HewlettPackard/hpcat/compare/v0.4...v0.5
+[v0.4]: https://github.com/HewlettPackard/hpcat/compare/v0.3...v0.4
 

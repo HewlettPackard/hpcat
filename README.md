@@ -29,6 +29,7 @@ Table of Contents
    - [GPU nodes (AMD Instinct MI250X)](#bardpeak-amd-gpus-instinct-mi250x-nodes)
    - [GPU nodes (Intel Max 1550)](#exascale-compute-blade-intel-gpus-max-1550-nodes)
    - [GPU nodes (NVIDIA A100)](#grizzlypeak-blade-nvidia-gpus-a100-nodes)
+1. [Future Work](#future-work)
 
 
 Dependencies
@@ -123,3 +124,11 @@ Examples
     MPICH_OFI_NIC_POLICY=NUMA srun -p griz512 -N 2 --tasks-per-node=4 -c 16 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
 
 ![HPCAT Grizzlypeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-grizzlypeak-example.png?raw=true)
+
+
+Future Work
+-----------
+
+- [ ] Provide support for NIC affinities with other MPI distributions (if possible).
+- [ ] Assess scalability with thousands of compute nodes.
+- [ ] Display warning tips to highlight potential performance issues resulting from suboptimal bindings.
