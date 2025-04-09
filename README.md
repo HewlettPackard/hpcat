@@ -1,5 +1,4 @@
-`HPC Affinity Tracker (HPCAT)`
-==============================
+![HPCAT Badge](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat.png?raw=true)
 
 This application is designed to display **NUMA**, **CPU core**, **Hardware threads**,
 **Network interfaces** and **GPU affinities** within the context of HPC applications.
