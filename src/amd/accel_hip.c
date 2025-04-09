@@ -64,8 +64,8 @@ int hpcat_accel_pciaddr_list_str(char *buff, const int max_buff_size)
         if (hipGetDeviceProperties(&prop, i) != hipSuccess)
             return -1;
 
-        snprintf(pci, PCI_STR_MAX - 1, "%s%01x:%02x", (buff[0] == '\0') ? "" : ",",
-                                                      prop.pciDomainID, prop.pciBusID);
+        snprintf(pci, PCI_STR_MAX - 1, "%s[%01x:%02x]", (buff[0] == '\0') ? "" : ",",
+                                                        prop.pciDomainID, prop.pciBusID);
 
         strncat(buff, pci, max_size);
         max_size -= strlen(pci);

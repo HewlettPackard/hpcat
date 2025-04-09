@@ -95,8 +95,8 @@ int hpcat_accel_pciaddr_list_str(char *buff, const int max_buff_size)
             return -1;
         }
 
-        snprintf(pci, PCI_STR_MAX - 1, "%s%01x:%02x", (buff[0] == '\0') ? "" : ",",
-                                                      pci_info.domain, pci_info.bus);
+        snprintf(pci, PCI_STR_MAX - 1, "%s[%01x:%02x]", (buff[0] == '\0') ? "" : ",",
+                                                        pci_info.domain, pci_info.bus);
         strncat(buff, pci, max_size);
         max_size -= strlen(pci);
         if (max_size <= 0)
