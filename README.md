@@ -1,19 +1,27 @@
-![HPCAT Badge](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat.png?raw=true)
+![HPCAT](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat.png?raw=true)
 
-This application is designed to display **NUMA**, **CPU core**, **Hardware threads**,
-**Network interfaces** and **GPU affinities** within the context of HPC applications.
+**HPCAT** provides a comprehensive visualization of system topology and resource
+affinities tailored for High Performance Computing (HPC) applications. It highlights
+the relationships between **NUMA nodes**, **CPU cores**, **Hardware threads**,
+**Network interfaces** and **GPU devices**.
 
-It provides reports on **MPI** tasks, **OpenMP** (automatically enabled if
-`OMP_NUM_THREADS` is set), **accelerators** (automatically enabled if GPUs are
-detected), and **NICs** (*Cray MPICH* only, starting from 2 nodes).
+It reports key runtime affinities, including:
+
+* **Fabric (group ID)** (cross-group communication incurs extra switch hops - currently supports HPE Slingshot with Dragonfly topology only)
+* **MPI tasks**
+* **OpenMP threads** (automatically enabled when `OMP_NUM_THREADS` is set)
+* **Accelerators** (automatically enabled if AMD, Intel or NVIDIA GPUs are detected)
+* **Network Interface Cards (NICs)** (available with *Cray MPICH*, starting from 2 nodes)
 
 The output format is a human-readable, condensed table, but *YAML* is also available
 as an option.
 
 > [!NOTE]
-> The application uses dynamic linking modules to retrieve information about
-> accelerators, allowing the same binary to be used across different partitions,
-> whether or not accelerators are present.
+> A key feature of this application is its use of dynamically linked modules
+> to retrieve information about system accelerators. This design allows a
+> single binary to run seamlessly across different cluster partitions (regardless
+> of whether accelerators are present) making it easier to deploy and maintain
+> a consistent user experience across the entire HPC system.
 
 ![HPCAT Output](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-main-example.png?raw=true)
 
@@ -39,14 +47,14 @@ Dependencies
 * **Intel OneAPI Level Zero** (Optional, for Intel GPUs)
 * **NVIDIA NVML** (Optional, for NVIDIA GPUs)
 * **MPI**
-* **[hwloc](https://github.com/open-mpi/hwloc)** (built with HPCAT)
-* **[libfort](https://github.com/seleznevae/libfort)** (built with HPCAT)
+* **[hwloc](https://github.com/open-mpi/hwloc)** (built with **HPCAT**)
+* **[libfort](https://github.com/seleznevae/libfort)** (built with **HPCAT**)
 
 
 Installation
 ------------
 
-HPCAT uses git submodules and CMake with a configure wrapper.
+**HPCAT** uses git submodules and CMake with a configure wrapper.
 
     git submodule update --init --recursive
     ./configure
@@ -83,6 +91,7 @@ Arguments are :
 
         --disable-accel        Don't display GPU affinities
         --disable-color        Don't use colors in the output
+        --disable-fabric       Don't display fabric group ID
         --disable-nic          Don't display Network affinities
         --disable-omp          Don't display OpenMP affinities
         --enable-color         Using colors in the bash output

@@ -86,6 +86,7 @@ typedef struct
     bool          is_last_rank;
     Affinity      affinity;
     char          hostname[HOST_NAME_MAX];
+    int           fabric_group_id;
     Nic           nic;
     int           num_threads;
     Thread        threads[THREADS_MAX];
@@ -95,8 +96,10 @@ typedef struct
 typedef struct Hpcat
 {
     HpcatSettings_t  settings;
+    int              num_fabric_groups;
     int              num_nodes;
     int              num_tasks;
+    int              num_omp_threads;
     int              id;
     char             mpi_version[MPI_MAX_LIBRARY_VERSION_STRING];
 } Hpcat;

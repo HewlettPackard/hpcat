@@ -43,6 +43,7 @@ typedef struct HpcatSettings
 {
     bool          enable_accel;
     bool          enable_nic;
+    bool          enable_fabric;
     bool          enable_omp;
     bool          enable_banner;
     bool          enable_color;

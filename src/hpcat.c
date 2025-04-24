@@ -32,11 +32,17 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <libgen.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
 
 #include "hpcat.h"
 #include "common.h"
 #include "settings.h"
 #include "output.h"
+
+#define AMA_GROUP_SHIFTS   11 /* Position of Dragonfly group id in a Slingshot MAC address */
+#define FABRIC_GROUPS_MAX 256
 
 #define MPI_CHECK(x)                                                                       \
         do {                                                                               \
@@ -326,7 +332,59 @@ void MPI_Finalize_noverbose(void)
 }
 
 /**
- * Retrieve MPI, OMP and accelerator based information
+ * Retrieve fabric locality information
+ *
+ * @param   hpcat[inout]    Application handle
+ * @param   task[inout]     Task handle
+ */
+void try_get_fabric_info(Hpcat *hpcat, Task *task)
+{
+    if (!hpcat->settings.enable_fabric)
+        return;
+
+    /* XXX: For now only detecting HPE Slingshot with Dragonfly topology.
+     * The DragonFly group id can be found in the MAC address of a Slingshot NIC */
+    struct ifaddrs *ifaddr, *ifa;
+    if (getifaddrs(&ifaddr) == -1)
+        FATAL("Error: unable to retrieve a list of network interfaces: %s\n", strerror(errno));
+
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd == -1)
+        FATAL("Error: unable to create an endpoint for communication: %s\n", strerror(errno));
+
+    int group_id = -1;
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+    {
+        struct ifreq ifr;
+
+        if (strstr(ifa->ifa_name, "hsn") == NULL) continue; /* Only selecting Slingshot interfaces */
+        if (ifa->ifa_addr->sa_family != AF_PACKET) continue; /* Only interested in physical (MAC) addresses */
+
+        strncpy(ifr.ifr_name, ifa->ifa_name, IFNAMSIZ - 1);
+        if (ioctl(fd, SIOCGIFHWADDR, &ifr) == 0)
+        {
+            unsigned char *mac = (unsigned char *)ifr.ifr_hwaddr.sa_data;
+            unsigned int ama = (mac[3] << 16) | (mac[4] << 8) | mac[5];
+            group_id = (ama >> AMA_GROUP_SHIFTS);
+            break; /* Assuming all NICs are in the same group */
+        } else
+            FATAL("Error: unable to retrieve %s MAC address\n", ifa->ifa_name);
+    }
+
+    if (group_id >= 0)
+    {
+        task->fabric_group_id = group_id;
+        VERBOSE(hpcat, "Verbose: Slingshot fabric detected and Dragonfly group id found.\n");
+    }
+    else
+        hpcat->settings.enable_fabric = false;
+
+    close(fd);
+    freeifaddrs(ifaddr);
+}
+
+/**
+ * Retrieve MPI, OMP, fabric and accelerator based information
  *
  * @param   hpcat[inout]    Application handle
  * @param   task[inout]     Task handle
@@ -360,6 +418,9 @@ void hpcat_init(Hpcat *hpcat, Task *task)
     get_cpu_numa_affinity(&task->affinity);
 
     memset(&task->accel, 0, sizeof(Accelerators));
+
+    /* Checking fabric locality */
+    try_get_fabric_info(hpcat, task);
 
     /* Checking if HIP is available, if so fetch information */
     try_get_accel_info(hpcat, task, "libamdhip64.so", "libhpcathip.so");
@@ -443,9 +504,12 @@ int main(int argc, char* argv[])
         }
     }
 
-    /* Disable NIC affinity if only one node */
+    /* Disable NIC and fabric affinity if only one node */
     if (hpcat.num_nodes == 1)
+    {
         hpcat.settings.enable_nic = false;
+        hpcat.settings.enable_fabric = false;
+    }
 
     /* Reordered list of ranks ( all ranks on a node before going to the next one) */
     int reordered_ranks[hpcat.num_tasks];
@@ -486,7 +550,24 @@ int main(int argc, char* argv[])
 
     if (task.is_first_rank)
     {
+        char groups[FABRIC_GROUPS_MAX] = { 0 };
+
         for (int i = 0; i < hpcat.num_tasks; i++)
+        {
+            Task *current_task = &tasks[reordered_ranks[i]];
+
+            /* Count total fabric dragonfly groups */
+            if (hpcat.settings.enable_fabric && !groups[current_task->fabric_group_id])
+            {
+                groups[current_task->fabric_group_id] = 1;
+                hpcat.num_fabric_groups++;
+            }
+
+            /* Count total OpenMP threads */
+            if (hpcat.settings.enable_omp)
+                hpcat.num_omp_threads += current_task->num_threads;
+
+            /* Print task info */
             switch (hpcat.settings.output_type)
             {
                 case STDOUT:
@@ -496,6 +577,7 @@ int main(int argc, char* argv[])
                     hpcat_display_yaml(&hpcat, &tasks[reordered_ranks[i]]);
                     break;
             }
+        }
 
         fflush(stdout);
         free(tasks);

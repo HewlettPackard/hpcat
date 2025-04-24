@@ -38,23 +38,23 @@
 #include "settings.h"
 
 #define STR_MAX      4096
-#define OMP_STR_MAX    10
+#define INT_STR_MAX    10
 
 #define TITLE    "HPC Affinity Tracker"
 #define VERSION  "v" HPCAT_VERSION
 
-#define HOST_COL  1
-#define MPI_COL   1
-#define OMP_COL   1
-#define CPU_COL   3
-#define ACCEL_COL 3
-#define NIC_COL   2
+#define HOST_COL   1
+#define MPI_COL    1
+#define OMP_COL    1
+#define CPU_COL    3
+#define ACCEL_COL  3
+#define NIC_COL    2
+#define FABRIC_COL 1
 
 ft_table_t *table = NULL;
 size_t num_columns = 0;
 size_t num_rows = 0;
-size_t num_omp_threads = 0;
-size_t start_omp, start_cpu, start_accel, start_nic;
+size_t start_host, start_mpi, start_omp, start_cpu, start_accel, start_nic;
 
 
 static void stdout_header(Hpcat *handle)
@@ -81,15 +81,22 @@ static void stdout_header(Hpcat *handle)
 
 static void stdout_footer(Hpcat *handle)
 {
-    char omp_str[OMP_STR_MAX];
+    char omp_str[INT_STR_MAX], fabric_str[INT_STR_MAX], row_str[STR_MAX];
 
     HpcatSettings_t *settings = &handle->settings;
 
     if (settings->enable_omp)
-        sprintf(omp_str, "%lu", num_omp_threads);
+        sprintf(omp_str, "%d", handle->num_omp_threads);
 
-    ft_printf_ln(table, "TOTAL: %d|%d|%s", handle->num_nodes, handle->num_tasks,
-                                           (settings->enable_omp ? omp_str : ""));
+    if (settings->enable_fabric)
+        sprintf(fabric_str, "%d|", handle->num_fabric_groups);
+
+    sprintf(row_str, "TOTAL: %s%d|%d|%s", (settings->enable_fabric ? fabric_str : ""),
+                                          handle->num_nodes, handle->num_tasks,
+                                          (settings->enable_omp ? omp_str : ""));
+
+    ft_printf_ln(table, row_str);
+
     if (settings->enable_color)
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
 
@@ -103,9 +110,10 @@ static void stdout_titles(Hpcat *handle)
     char row_str[STR_MAX];
 
     /* First title row */
-    sprintf(row_str, "HOST|MPI|%sCPU||%s%s", (settings->enable_omp ? "OMP|" : "" ),
-                                             (settings->enable_accel ? "|ACCELERATORS||" : ""),
-                                             (settings->enable_nic ? "|NETWORK|" : ""));
+    sprintf(row_str, "%sHOST|MPI|%sCPU||%s%s", (settings->enable_fabric ? "FABRIC|" : "" ),
+                                               (settings->enable_omp ? "OMP|" : "" ),
+                                               (settings->enable_accel ? "|ACCELERATORS||" : ""),
+                                               (settings->enable_nic ? "|NETWORK|" : ""));
     ft_printf_ln(table, row_str);
 
     if (settings->enable_color)
@@ -115,8 +123,8 @@ static void stdout_titles(Hpcat *handle)
     }
 
     ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
-    ft_set_cell_prop(table, num_rows, 0, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
-    ft_set_cell_prop(table, num_rows, 1, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
+    ft_set_cell_prop(table, num_rows, start_host, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
+    ft_set_cell_prop(table, num_rows, start_mpi, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
 
     ft_set_cell_span(table, num_rows, start_cpu, 3);
 
@@ -130,7 +138,8 @@ static void stdout_titles(Hpcat *handle)
     num_rows++;
 
     /* Second title row */
-    sprintf(row_str, "(NODE)|RANK|%sLOGICAL PROC|PHYSICAL CORE|NUMA%s%s",
+    sprintf(row_str, "%s(NODE)|RANK|%sLOGICAL PROC|PHYSICAL CORE|NUMA%s%s",
+                                         (settings->enable_fabric ? "GROUP ID|" : "" ),
                                          (settings->enable_omp ? "ID|" : "" ),
                                          (settings->enable_accel ? "|ID|PCIE ADDR.|NUMA" : ""),
                                          (settings->enable_nic ? "|INTERFACE|NUMA" : ""));
@@ -141,8 +150,8 @@ static void stdout_titles(Hpcat *handle)
     {
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_ITALIC);
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
-        ft_set_cell_prop(table, num_rows, 0, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
-        ft_set_cell_prop(table, num_rows, 1, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+        ft_set_cell_prop(table, num_rows, start_host, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+        ft_set_cell_prop(table, num_rows, start_mpi, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
 
         if (settings->enable_omp)
             ft_set_cell_prop(table, num_rows, start_omp, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
@@ -152,11 +161,11 @@ static void stdout_titles(Hpcat *handle)
     }
 
     ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
-    ft_set_cell_prop(table, num_rows, 0, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
-    ft_set_cell_prop(table, num_rows, 1, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
+    ft_set_cell_prop(table, num_rows, start_host, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
+    ft_set_cell_prop(table, num_rows, start_mpi, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
 
     if (settings->enable_omp)
-        ft_set_cell_prop(table, num_rows, 2, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
+        ft_set_cell_prop(table, num_rows, start_omp, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
 
     num_rows++;
 }
@@ -193,7 +202,9 @@ static void stdout_task(Hpcat *handle, Task *task)
     if (task->nic.num_nic > 0)
         sprintf(nic_numa_str, "%d", task->nic.numa_affinity);
 
-    sprintf(row_str, "|%d|%s%s|%s|%s%s%s%s%s%s%s%s%s%s%s", task->id,
+    sprintf(row_str, "%s|%d|%s%s|%s|%s%s%s%s%s%s%s%s%s%s%s",
+                                     (settings->enable_fabric ? "|" : ""),
+                                     task->id,
                                      (settings->enable_omp ? "---|" : "" ),
                                      hw_thread_str, core_str, numa_str,
                                      (settings->enable_accel ? "|" : ""),
@@ -213,7 +224,7 @@ static void stdout_task(Hpcat *handle, Task *task)
 static void stdout_omp(Hpcat *handle, Task *task)
 {
     HpcatSettings_t *settings = &handle->settings;
-    char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
+    char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX], row_str[STR_MAX];
 
     hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
     if (bitmap == NULL)
@@ -230,9 +241,11 @@ static void stdout_omp(Hpcat *handle, Task *task)
         if (settings->enable_color)
             ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_YELLOW);
 
-        ft_printf_ln(table, "||%d|%s|%s|%s", thread->id, hw_thread_str, core_str, numa_str);
+        sprintf(row_str, "%s||%d|%s|%s|%s", (settings->enable_fabric ? "|" : ""),
+                                            thread->id, hw_thread_str, core_str, numa_str);
+
+        ft_printf_ln(table, row_str);
         num_rows++;
-        num_omp_threads++;
     }
 
     hwloc_bitmap_free(bitmap);
@@ -258,6 +271,8 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
 
         /* Compute amount of columns */
         num_columns = HOST_COL + MPI_COL + CPU_COL;
+        if (settings->enable_fabric)
+            num_columns += FABRIC_COL;
         if (settings->enable_omp)
             num_columns += OMP_COL;
         if (settings->enable_accel)
@@ -266,15 +281,18 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
             num_columns += NIC_COL;
 
         /* Compute start column of each section */
-        start_omp = HOST_COL + MPI_COL;
-        start_cpu = HOST_COL + MPI_COL + (settings->enable_omp ? OMP_COL : 0);
+        start_host = (settings->enable_fabric ? FABRIC_COL : 0);
+        start_mpi = start_host + HOST_COL;
+        start_omp = start_mpi + MPI_COL;
+        start_cpu = start_omp + (settings->enable_omp ? OMP_COL : 0);
         start_accel = start_cpu + CPU_COL;
         start_nic = start_accel + (settings->enable_accel ? ACCEL_COL : 0);
 
         if (settings->enable_color)
         {
             ft_set_cell_prop(table, FT_ANY_ROW, 0, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
-            ft_set_cell_prop(table, FT_ANY_ROW, 1, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+            ft_set_cell_prop(table, FT_ANY_ROW, start_host, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+            ft_set_cell_prop(table, FT_ANY_ROW, start_mpi, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
 
             if (settings->enable_omp)
                 ft_set_cell_prop(table, FT_ANY_ROW, start_omp, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
@@ -292,8 +310,15 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
     /* Node level */
     if (task->is_first_node_rank)
     {
+        char row_str[STR_MAX];
         ft_add_separator(table);
-        ft_write_ln(table, task->hostname);
+
+        if (settings->enable_fabric)
+            sprintf(row_str, "%d|%s|", task->fabric_group_id, task->hostname);
+        else
+            sprintf(row_str, "%s|", task->hostname);
+
+        ft_printf_ln(table, row_str);
         num_rows++;
     }
 
@@ -327,6 +352,7 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
  */
 void hpcat_display_yaml(Hpcat *handle, Task *task)
 {
+    HpcatSettings_t *settings = &handle->settings;
     char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX];
 
     hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
@@ -347,6 +373,10 @@ void hpcat_display_yaml(Hpcat *handle, Task *task)
     if (task->is_first_node_rank)
     {
         printf("%2s- name: \"%s\"\n", " ", task->hostname);
+
+        if (settings->enable_fabric)
+            printf("%4sfabric_group_id: %d\n", " ", task->fabric_group_id);
+
         printf("%4smpi:\n", " ");
     }
 
@@ -378,7 +408,7 @@ void hpcat_display_yaml(Hpcat *handle, Task *task)
     }
 
     /* OMP thread level */
-    if (task->num_threads > 1 && handle->settings.enable_omp)
+    if (task->num_threads > 1 && settings->enable_omp)
     {
         printf("%8somp:\n", " ");
         for (int i = 0; i < task->num_threads; i++)
@@ -393,6 +423,18 @@ void hpcat_display_yaml(Hpcat *handle, Task *task)
             printf("%12sphysical_core: \"%s\"\n", " ", core_str);
             printf("%12snuma: \"%s\"\n", " ", numa_str);
         }
+    }
+
+    if (task->is_last_rank)
+    {
+        if (settings->enable_fabric)
+            printf("total_fabric_groups: %d\n", handle->num_fabric_groups);
+
+        printf("total_nodes: %d\n", handle->num_nodes);
+        printf("total_mpi_ranks: %d\n", handle->num_tasks);
+
+        if (settings->enable_omp)
+            printf("total_omp_threads: %d\n", handle->num_omp_threads);
     }
 
     hwloc_bitmap_free(bitmap);

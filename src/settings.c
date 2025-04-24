@@ -36,12 +36,16 @@ const char *argp_program_version = HPCAT_VERSION;
 const char *argp_program_bug_address = HPCAT_CONTACT;
 
 /* Program documentation */
-static char doc[] = "This application is designed to display NUMA and CPU affinities in the context "
-                    "of HPC applications. Details about, MPI tasks, OpenMP (automatically enabled if "
-                    "OMP_NUM_THREADS is set), accelerators (automatically enabled if GPUs are detected) "
-                    "and network interfaces (Cray MPICH only, starting from 2 nodes) are reported. "
-                    "The application only shows detected affinities but parameters can be used to "
-                    "force enabling/disabling details. It accepts the following arguments:";
+static char doc[] = "This application is designed to display NUMA and CPU affinities in the "
+                    "context of HPC applications. It provides detailed information about MPI "
+                    "tasks, OpenMP threads (automatically enabled if OMP_NUM_THREADS is set), "
+                    "hardware accelerators (enabled automatically if GPUs are detected), and "
+                    "network interfaces (Cray MPICH only, starting from two nodes). For systems "
+                    "using the HPE Slingshot fabric, the Dragonfly group ID is also reported, "
+                    "offering insight into whether nodes belong to the same group or communicate "
+                    "across additional hops. The application only reports detected affinities by "
+                    "default. However, command-line parameters can be used to explicitly enable "
+                    "or disable specific details. The application accepts the following arguments:";
 
 /* A description of the arguments we accept (in addition to the options) */
 static char args_doc[] = " ";
@@ -55,6 +59,7 @@ static struct argp_option options[] =
     {"disable-color",   22,  0,         0,  "Don't use colors in the output"},
     {"disable-nic",     23,  0,         0,  "Don't display Network affinities"},
     {"disable-accel",   24,  0,         0,  "Don't display GPU affinities"},
+    {"disable-fabric",  25,  0,         0,  "Don't display fabric group ID"},
     {"no-banner",       31,  0,         0,  "Don't display header/footer"},
     {"verbose",         'v', 0,         0,  "Make the operations talkative"},
     {"yaml",            'y', 0,         0,  "YAML output"},
@@ -85,6 +90,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
             break;
         case  24:
             settings->enable_accel = false;
+            break;
+        case  25:
+            settings->enable_fabric = false;
             break;
         case  31:
             settings->enable_banner = false;
@@ -122,6 +130,7 @@ void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings
     hpcat_settings->enable_accel   = true;
     hpcat_settings->enable_banner  = true;
     hpcat_settings->enable_nic     = true;
+    hpcat_settings->enable_fabric  = true;
     hpcat_settings->enable_verbose = false;
     hpcat_settings->enable_color   = isatty(STDOUT_FILENO);
 
