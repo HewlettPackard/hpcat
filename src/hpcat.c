@@ -367,7 +367,8 @@ void try_get_fabric_info(Hpcat *hpcat, Task *task)
             unsigned int ama = (mac[3] << 16) | (mac[4] << 8) | mac[5];
             group_id = (ama >> AMA_GROUP_SHIFTS);
             break; /* Assuming all NICs are in the same group */
-        } else
+        }
+        else
             FATAL("Error: unable to retrieve %s MAC address\n", ifa->ifa_name);
     }
 
@@ -407,12 +408,57 @@ void hpcat_init(Hpcat *hpcat, Task *task)
     if (gethostname(task->hostname, HOST_NAME_MAX) != 0)
         FATAL("Error: unable to get host name: %s. Exiting\n", strerror(errno));
 
+    /* Detect all cores regardless cgroups */
+    setenv("HWLOC_THISSYSTEM", "1", 1);
+
     /* Loading hwloc topology */
     if (hwloc_topology_init(&topology) != 0)
         FATAL("Error: unable to initialize hwloc. Exiting.\n");
 
-    if (hwloc_topology_load(topology) != 0)
-        FATAL("Error: unable to load hwloc topology. Exiting.\n");
+    /* XXX: Loading the topology is slow and appears to be a sequential operation for tasks
+     * on the same node. To optimize this, only one rank per node now discovers the topology
+     * and shares it with the other ranks on that node. */
+    int node_rank, node_size;
+    MPI_Comm node_comm;
+    MPI_CHECK( MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &node_comm) );
+    MPI_CHECK( MPI_Comm_rank(node_comm, &node_rank) );
+    MPI_CHECK( MPI_Comm_size(node_comm, &node_size) );
+
+    if (node_rank == 0) /* Local master load the topology */
+    {
+        char *buffer = NULL;
+        int length = 0;
+
+        if (hwloc_topology_load(topology) != 0)
+            FATAL("Error: unable to load the hwloc topology. Exiting.\n");
+
+        if (hwloc_topology_export_xmlbuffer(topology, &buffer, &length, 0) != 0)
+            FATAL("Error: unable to export the hwloc topology. Exiting.\n");
+
+        MPI_CHECK( MPI_Bcast(&length, 1, MPI_INT, 0, node_comm) );
+        MPI_CHECK( MPI_Bcast(buffer, length, MPI_BYTE, 0, node_comm) );
+
+        hwloc_free_xmlbuffer(topology, buffer);
+    }
+    else /* Other local ranks receive the topology */
+    {
+        int length = 0;
+        MPI_CHECK( MPI_Bcast(&length, 1, MPI_INT, 0, node_comm) );
+
+        char *buffer = (char *)malloc(length);
+        if (buffer == NULL)
+            FATAL("Error: unable to allocate hwloc buffer. Exiting.\n");
+
+        MPI_CHECK( MPI_Bcast(buffer, length, MPI_BYTE, 0, node_comm) );
+
+        if (hwloc_topology_set_xmlbuffer(topology, buffer, length) != 0)
+            FATAL("Error: unable to import hwloc XML buffer. Exiting.\n");
+
+        if (hwloc_topology_load(topology) != 0)
+            FATAL("Error: unable to load the hwloc topology from XML buffer. Exiting.\n");
+
+        free(buffer);
+    }
 
     /* Retrieving NUMA and CPU core affinities */
     get_cpu_numa_affinity(&task->affinity);
@@ -546,7 +592,7 @@ int main(int argc, char* argv[])
             FATAL("Error: unable to allocate tasks buffer. Exiting.\n");
     }
 
-    MPI_Gather(&task, sizeof(Task), MPI_BYTE, tasks, sizeof(Task), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_CHECK( MPI_Gather(&task, sizeof(Task), MPI_BYTE, tasks, sizeof(Task), MPI_BYTE, 0, MPI_COMM_WORLD) );
 
     if (task.is_first_rank)
     {
