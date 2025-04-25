@@ -5,7 +5,11 @@ PROJECT(hpcat)
 OPTION(DEBUG "Debug mode." OFF)
 
 IF(DEBUG)
-    SET(CMAKE_C_FLAGS "-O0 -g -fsanitize=address -fno-omit-frame-pointer -fopenmp")
+    SET(CMAKE_BUILD_TYPE Debug)
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -fno-omit-frame-pointer")
+ELSE(DEBUG)
+    SET(CMAKE_BUILD_TYPE Release)
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
 ENDIF(DEBUG)
 
 ADD_SUBDIRECTORY(submodules)
