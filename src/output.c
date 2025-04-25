@@ -218,6 +218,10 @@ static void stdout_task(Hpcat *handle, Task *task)
                                      (settings->enable_nic ? "|" : ""),
                                      (settings->enable_nic ? nic_numa_str : ""));
     ft_printf_ln(table, row_str);
+
+    if (settings->enable_color)
+        ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_LIGHT_GRAY);
+
     num_rows++;
 }
 
@@ -237,9 +241,6 @@ static void stdout_omp(Hpcat *handle, Task *task)
         bitmap_to_str(hw_thread_str, (Bitmap*)&thread->affinity.hw_thread_affinity, bitmap);
         bitmap_to_str(core_str, (Bitmap*)&thread->affinity.core_affinity, bitmap);
         bitmap_to_str(numa_str, &thread->affinity.numa_affinity, bitmap);
-
-        if (settings->enable_color)
-            ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_YELLOW);
 
         sprintf(row_str, "%s||%d|%s|%s|%s", (settings->enable_fabric ? "|" : ""),
                                             thread->id, hw_thread_str, core_str, numa_str);
@@ -266,7 +267,7 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
         /* Initialize the table */
         table = ft_create_table();
         ft_set_border_style(table, FT_SOLID_ROUND_STYLE);
-        ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_LIGHT_GRAY);
+        ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_YELLOW);
         ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
 
         /* Compute amount of columns */
@@ -319,6 +320,10 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
             sprintf(row_str, "%s|", task->hostname);
 
         ft_printf_ln(table, row_str);
+
+        if (settings->enable_color)
+            ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_LIGHT_GRAY);
+
         num_rows++;
     }
 
