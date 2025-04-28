@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [v0.7] - 2025-04-29
+
+### Added
+
+- Support for Slingshot Dragonfly group ID detection.
+- Scalability plot from 2 to 256 nodes with 8 MPI tasks per node (execution time < 3 seconds).
+- Forwarding the CC variable from the configure wrapper to CMake for easier compiler switching.
+
+### Changed
+
+- Accelerated topology detection with hwloc by limiting discovery to one rank per node and sharing the results with local ranks.
+- Reduced colored output overhead with libfort by using OMP lines as the default color.
+
+### Fixed
+
+- Addressed compilation and linking issues with compilers other than Cray Compilers.
+
+
 ## [v0.6] - 2025-04-09
 
 ### Added
@@ -49,6 +67,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Rely on the search path to check libnvidia-ml and libamdhip64 availabilities.
 - Auto accelerator disabling: now counts all visible accelerators (allreduce) and disables the column if zero.
 
+[v0.7]: https://github.com/HewlettPackard/hpcat/compare/v0.6...v0.7
 [v0.6]: https://github.com/HewlettPackard/hpcat/compare/v0.5...v0.6
 [v0.5]: https://github.com/HewlettPackard/hpcat/compare/v0.4...v0.5
 [v0.4]: https://github.com/HewlettPackard/hpcat/compare/v0.3...v0.4
