@@ -37,6 +37,7 @@ Table of Contents
    - [GPU nodes (AMD Instinct MI250X)](#bardpeak-amd-gpus-instinct-mi250x-nodes)
    - [GPU nodes (Intel Max 1550)](#exascale-compute-blade-intel-gpus-max-1550-nodes)
    - [GPU nodes (NVIDIA A100)](#grizzlypeak-blade-nvidia-gpus-a100-nodes)
+1. [Scalability](#scalability)
 1. [Future Work](#future-work)
 
 
@@ -135,9 +136,24 @@ Examples
 ![HPCAT Grizzlypeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-grizzlypeak-example.png?raw=true)
 
 
+Scalability
+-----------
+
+`HPCAT` maintains a low runtime. Most of the execution time is spent in library
+operations, such as initializing the GPU framework to retrieve locality information,
+scanning the system topology with hwloc, or displaying the tabular output on
+the first rank.
+
+The plot below shows the execution time on LUMI as a function of the number of
+compute nodes (each equipped with MI250x AMD GPUs). The configuration uses 8 MPI
+ranks per node, with one GPU (GCD) assigned to each rank. At 256 nodes, a total
+of 2048 MPI tasks are launched. Colors are disabled in this run:
+
+![Scalability up to 256 nodes](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-scalability.png?raw=true)
+
+
 Future Work
 -----------
 
 - [ ] Provide support for NIC affinities with other MPI distributions (if possible).
-- [ ] Assess scalability with thousands of compute nodes.
 - [ ] Display warning tips to highlight potential performance issues resulting from suboptimal bindings.
