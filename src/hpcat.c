@@ -34,7 +34,7 @@
 #include <libgen.h>
 #include <ifaddrs.h>
 #include <net/if.h>
-#include <sys/ioctl.h>
+#include <netpacket/packet.h>
 
 #include "hpcat.h"
 #include "common.h"
@@ -348,22 +348,16 @@ void try_get_fabric_info(Hpcat *hpcat, Task *task)
     if (getifaddrs(&ifaddr) == -1)
         FATAL("Error: unable to retrieve a list of network interfaces: %s\n", strerror(errno));
 
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (fd == -1)
-        FATAL("Error: unable to create an endpoint for communication: %s\n", strerror(errno));
-
     int group_id = -1;
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
     {
-        struct ifreq ifr;
-
         if (strstr(ifa->ifa_name, "hsn") == NULL) continue; /* Only selecting Slingshot interfaces */
         if (ifa->ifa_addr->sa_family != AF_PACKET) continue; /* Only interested in physical (MAC) addresses */
 
-        strncpy(ifr.ifr_name, ifa->ifa_name, IFNAMSIZ - 1);
-        if (ioctl(fd, SIOCGIFHWADDR, &ifr) == 0)
+        struct sockaddr_ll *saddr = (struct sockaddr_ll*)ifa->ifa_addr;
+        if (saddr->sll_halen == 6)
         {
-            unsigned char *mac = (unsigned char *)ifr.ifr_hwaddr.sa_data;
+            unsigned char *mac = saddr->sll_addr;
             unsigned int ama = (mac[3] << 16) | (mac[4] << 8) | mac[5];
             group_id = (ama >> AMA_GROUP_SHIFTS);
             break; /* Assuming all NICs are in the same group */
@@ -380,7 +374,6 @@ void try_get_fabric_info(Hpcat *hpcat, Task *task)
     else
         hpcat->settings.enable_fabric = false;
 
-    close(fd);
     freeifaddrs(ifaddr);
 }
 
