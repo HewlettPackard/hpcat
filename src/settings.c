@@ -56,7 +56,6 @@ static struct argp_option options[] =
     {"enable-omp",      11,  0,         0,  "Display OpenMP affinities"},
     {"enable-color",    12,  0,         0,  "Using colors in the bash output"},
     {"disable-omp",     21,  0,         0,  "Don't display OpenMP affinities"},
-    {"disable-color",   22,  0,         0,  "Don't use colors in the output"},
     {"disable-nic",     23,  0,         0,  "Don't display Network affinities"},
     {"disable-accel",   24,  0,         0,  "Don't display GPU affinities"},
     {"disable-fabric",  25,  0,         0,  "Don't display fabric group ID"},
@@ -81,9 +80,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
             break;
         case  21:
             settings->enable_omp = false;
-            break;
-        case  22:
-            settings->enable_color = false;
             break;
         case  23:
             settings->enable_nic = false;
@@ -132,7 +128,7 @@ void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings
     hpcat_settings->enable_nic     = true;
     hpcat_settings->enable_fabric  = true;
     hpcat_settings->enable_verbose = false;
-    hpcat_settings->enable_color   = isatty(STDOUT_FILENO);
+    hpcat_settings->enable_color   = false;
 
     char *omp_env = getenv("OMP_NUM_THREADS");
     hpcat_settings->enable_omp = (omp_env != NULL) && (atoi(omp_env) > 1);

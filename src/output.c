@@ -267,7 +267,6 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
         /* Initialize the table */
         table = ft_create_table();
         ft_set_border_style(table, FT_SOLID_ROUND_STYLE);
-        ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_YELLOW);
         ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_RIGHT);
 
         /* Compute amount of columns */
@@ -291,6 +290,7 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
 
         if (settings->enable_color)
         {
+            ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_YELLOW);
             ft_set_cell_prop(table, FT_ANY_ROW, 0, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
             ft_set_cell_prop(table, FT_ANY_ROW, start_host, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
             ft_set_cell_prop(table, FT_ANY_ROW, start_mpi, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
