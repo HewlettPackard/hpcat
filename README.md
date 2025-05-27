@@ -32,6 +32,7 @@ Table of Contents
 1. [Dependencies](#dependencies)
 1. [Installation](#installation)
 1. [Usage](#usage)
+1. [Arguments](#arguments)
 1. [Examples](#examples)
    - [CPU nodes (AMD EPYC Genoa)](#antero-amd-cpus-epyc-genoa-nodes)
    - [GPU nodes (AMD Instinct MI250X)](#bardpeak-amd-gpus-instinct-mi250x-nodes)
@@ -82,13 +83,27 @@ Installation
 > [!TIP]
 > Compilation of each GPU module can also be skipped (check `./configure --help`).
 
-
 Usage
 -----
 
-    % hpcat [ARGS...]
+**HPCAT** should be launched in the same manner as your application. With Slurm,
+you can add an additional srun command using the same arguments to match the
+properties of the original srun line, including resource allocation and bindings.
+If you are using a wrapper script with your application, be sure to include it to
+capture all affinity and binding properties.
 
-Arguments are :
+A convenient approach is to use a variable to share the job scheduler arguments.
+For example, with Slurm in your batch script:
+
+    SLURM_ARGS="-N 2 -n 16 -c 16 --hint=nomultithread"
+    srun $SLURM_ARGS bin/hpcat
+    srun $SLURM_ARGS <app>
+
+
+Arguments
+---------
+
+**HPCAT** accepts the following arguments:
 
     -c, --enable-color-dark    Using colors (dark terminal)
         --disable-accel        Don't display GPU affinities
@@ -110,14 +125,14 @@ Examples
 
 ### Antero [AMD CPUs EPYC Genoa] nodes:
 
-    OMP_NUM_THREADS=2 srun -p antero -N2 --tasks-per-node=8 -c 24 --hint=nomultithread --pty bin/hpcat --no-banner
+    OMP_NUM_THREADS=2 srun -p antero -N 2 --tasks-per-node=8 -c 24 --hint=nomultithread --pty bin/hpcat --no-banner
 
 ![HPCAT Antero](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-antero-example.png?raw=true)
 
 
 ### Bardpeak [AMD GPUs Instinct MI250X] nodes:
 
-    MPICH_OFI_NIC_POLICY=NUMA srun -p bardpeak -N2 --tasks-per-node=8 -c 8 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
+    MPICH_OFI_NIC_POLICY=NUMA srun -p bardpeak -N 2 --tasks-per-node=8 -c 8 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
 
 ![HPCAT Bardpeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-bardpeak-example.png?raw=true)
 
