@@ -64,11 +64,12 @@ static void stdout_header(Hpcat *handle)
     printf("%s\n", handle->mpi_version);
 
     /* Configuring the header */
-    if (settings->enable_color)
+    if (settings->color_type != NOCOLOR)
     {
-        ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_BLACK);
-        ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_CELL_BG_COLOR, FT_COLOR_YELLOW);
         ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
+        ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_CELL_BG_COLOR, FT_COLOR_YELLOW);
+        ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR,
+              (settings->color_type == DARK_BG) ? FT_COLOR_BLACK : FT_COLOR_LIGHT_YELLOW);
     }
 
     ft_set_cell_prop(table, 0, FT_ANY_COLUMN, FT_CPROP_ROW_TYPE, FT_ROW_HEADER);
@@ -97,7 +98,7 @@ static void stdout_footer(Hpcat *handle)
 
     ft_printf_ln(table, row_str);
 
-    if (settings->enable_color)
+    if (settings->color_type != NOCOLOR)
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
 
     ft_set_cell_span(table, num_rows, start_cpu, num_columns - start_cpu);
@@ -116,7 +117,7 @@ static void stdout_titles(Hpcat *handle)
                                                (settings->enable_nic ? "|NETWORK|" : ""));
     ft_printf_ln(table, row_str);
 
-    if (settings->enable_color)
+    if (settings->color_type != NOCOLOR)
     {
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
@@ -146,7 +147,7 @@ static void stdout_titles(Hpcat *handle)
 
     ft_printf_ln(table, row_str);
 
-    if (settings->enable_color)
+    if (settings->color_type != NOCOLOR)
     {
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_ITALIC);
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
@@ -219,8 +220,9 @@ static void stdout_task(Hpcat *handle, Task *task)
                                      (settings->enable_nic ? nic_numa_str : ""));
     ft_printf_ln(table, row_str);
 
-    if (settings->enable_color)
-        ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_LIGHT_GRAY);
+    if (settings->color_type != NOCOLOR)
+        ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR,
+              (settings->color_type == DARK_BG) ? FT_COLOR_LIGHT_GRAY : FT_COLOR_DARK_GRAY);
 
     num_rows++;
 }
@@ -288,7 +290,7 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
         start_accel = start_cpu + CPU_COL;
         start_nic = start_accel + (settings->enable_accel ? ACCEL_COL : 0);
 
-        if (settings->enable_color)
+        if (settings->color_type != NOCOLOR)
         {
             ft_set_cell_prop(table, FT_ANY_ROW, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_YELLOW);
             ft_set_cell_prop(table, FT_ANY_ROW, 0, FT_CPROP_CONT_TEXT_STYLE, FT_TSTYLE_BOLD);
@@ -321,8 +323,9 @@ void hpcat_display_stdout(Hpcat *handle, Task *task)
 
         ft_printf_ln(table, row_str);
 
-        if (settings->enable_color)
-            ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_LIGHT_GRAY);
+        if (settings->color_type != NOCOLOR)
+            ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR,
+              (settings->color_type == DARK_BG) ? FT_COLOR_LIGHT_GRAY : FT_COLOR_DARK_GRAY);
 
         num_rows++;
     }

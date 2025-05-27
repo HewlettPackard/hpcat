@@ -90,12 +90,12 @@ Usage
 
 Arguments are :
 
+    -c, --enable-color-dark    Using colors (dark terminal)
         --disable-accel        Don't display GPU affinities
-        --disable-color        Don't use colors in the output
         --disable-fabric       Don't display fabric group ID
         --disable-nic          Don't display Network affinities
         --disable-omp          Don't display OpenMP affinities
-        --enable-color         Using colors in the bash output
+        --enable-color-light   Using colors (light terminal)
         --enable-omp           Display OpenMP affinities
         --no-banner            Don't display header/footer
     -v, --verbose              Make the operations talkative

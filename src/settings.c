@@ -42,7 +42,7 @@ static char doc[] = "This application is designed to display NUMA and CPU affini
                     "hardware accelerators (enabled automatically if GPUs are detected), and "
                     "network interfaces (Cray MPICH only, starting from two nodes). For systems "
                     "using the HPE Slingshot fabric, the Dragonfly group ID is also reported, "
-                    "offering insight into whether nodes belong to the same group or communicate "
+                    "offering insight into whether nodes belong to the same: group or communicate "
                     "across additional hops. The application only reports detected affinities by "
                     "default. However, command-line parameters can be used to explicitly enable "
                     "or disable specific details. The application accepts the following arguments:";
@@ -53,15 +53,16 @@ static char args_doc[] = " ";
 /* Options */
 static struct argp_option options[] =
 {
-    {"enable-omp",      11,  0,         0,  "Display OpenMP affinities"},
-    {"enable-color",    12,  0,         0,  "Using colors in the bash output"},
-    {"disable-omp",     21,  0,         0,  "Don't display OpenMP affinities"},
-    {"disable-nic",     23,  0,         0,  "Don't display Network affinities"},
-    {"disable-accel",   24,  0,         0,  "Don't display GPU affinities"},
-    {"disable-fabric",  25,  0,         0,  "Don't display fabric group ID"},
-    {"no-banner",       31,  0,         0,  "Don't display header/footer"},
-    {"verbose",         'v', 0,         0,  "Make the operations talkative"},
-    {"yaml",            'y', 0,         0,  "YAML output"},
+    {"enable-omp",         11,  0,         0,  "Display OpenMP affinities"},
+    {"enable-color-light", 12,  0,         0,  "Using colors (light terminal)"},
+    {"enable-color-dark", 'c',  0,         0,  "Using colors (dark terminal)"},
+    {"disable-omp",        21,  0,         0,  "Don't display OpenMP affinities"},
+    {"disable-nic",        23,  0,         0,  "Don't display Network affinities"},
+    {"disable-accel",      24,  0,         0,  "Don't display GPU affinities"},
+    {"disable-fabric",     25,  0,         0,  "Don't display fabric group ID"},
+    {"no-banner",          31,  0,         0,  "Don't display header/footer"},
+    {"verbose",            'v', 0,         0,  "Make the operations talkative"},
+    {"yaml",               'y', 0,         0,  "YAML output"},
     {0}
 };
 
@@ -76,7 +77,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
             settings->enable_omp = true;
             break;
         case  12:
-            settings->enable_color = true;
+            settings->color_type = LIGHT_BG;
             break;
         case  21:
             settings->enable_omp = false;
@@ -92,6 +93,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
             break;
         case  31:
             settings->enable_banner = false;
+            break;
+        case  'c':
+            settings->color_type = DARK_BG;
             break;
         case 'v':
             settings->enable_verbose = true;
@@ -128,7 +132,7 @@ void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings
     hpcat_settings->enable_nic     = true;
     hpcat_settings->enable_fabric  = true;
     hpcat_settings->enable_verbose = false;
-    hpcat_settings->enable_color   = false;
+    hpcat_settings->color_type     = NOCOLOR;
 
     char *omp_env = getenv("OMP_NUM_THREADS");
     hpcat_settings->enable_omp = (omp_env != NULL) && (atoi(omp_env) > 1);

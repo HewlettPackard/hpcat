@@ -39,6 +39,13 @@ typedef enum OutputType
     YAML
 } OutputType_t;
 
+typedef enum ColorType
+{
+    NOCOLOR,
+    DARK_BG,
+    LIGHT_BG
+} ColorType_t;
+
 typedef struct HpcatSettings
 {
     bool          enable_accel;
@@ -46,8 +53,8 @@ typedef struct HpcatSettings
     bool          enable_fabric;
     bool          enable_omp;
     bool          enable_banner;
-    bool          enable_color;
     bool          enable_verbose;
+    ColorType_t   color_type;
     OutputType_t  output_type;
 } HpcatSettings_t;
 
