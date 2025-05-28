@@ -160,14 +160,14 @@ void try_get_accel_info(Hpcat *hpcat, Task *task, const char *check_lib, const c
     dlclose(handle);
 
     /* Get directory path of this binary */
-    char buf[PATH_MAX], *lib_path;
+    char buf[PATH_MAX], *current_path;
     readlink("/proc/self/exe", buf, PATH_MAX - 1);
-    lib_path = dirname(buf);
+    current_path = dirname(buf);
 
     /* Get full path where the module is supposed to be stored */
     char dynlib_path[PATH_MAX];
-    strncpy(dynlib_path, lib_path, PATH_MAX - 1);
-    strncat(dynlib_path, "/", PATH_MAX - 2);
+    strncpy(dynlib_path, current_path, PATH_MAX - 1);
+    strncat(dynlib_path, "/../lib/", PATH_MAX - 2);
     strncat(dynlib_path, dyn_module, PATH_MAX - 2 - strlen(dyn_module));
 
     /* Load dynamic module */

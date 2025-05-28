@@ -72,11 +72,11 @@ Installation
 
 
 > [!CAUTION]
-> The tool will be installed in the *bin* subdirectory by default. You may want
+> The tool will be installed in the *install* subdirectory by default. You may want
 > to use  `./configure --prefix=<destination_path>` to define your own destination
 > path (or directly use CMake and not the configure wrapper).
 > If you decide to move the tool to a different directory, make sure that the
-> dynamic library modules are stored in the same directory as the *hpcat* binary.
+> dynamic library modules (in <destination_path>/lib) are also moved.
 > Otherwise, the module(s) will be ignored.
 
 
@@ -125,28 +125,28 @@ Examples
 
 ### Antero [AMD CPUs EPYC Genoa] nodes:
 
-    OMP_NUM_THREADS=2 srun -p antero -N 2 --tasks-per-node=8 -c 24 --hint=nomultithread --pty bin/hpcat --no-banner
+    OMP_NUM_THREADS=2 srun -p antero -N 2 --tasks-per-node=8 -c 24 --hint=nomultithread hpcat -c --no-banner
 
 ![HPCAT Antero](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-antero-example.png?raw=true)
 
 
 ### Bardpeak [AMD GPUs Instinct MI250X] nodes:
 
-    MPICH_OFI_NIC_POLICY=NUMA srun -p bardpeak -N 2 --tasks-per-node=8 -c 8 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
+    MPICH_OFI_NIC_POLICY=NUMA srun -p bardpeak -N 2 --tasks-per-node=8 -c 8 --hint=nomultithread ./gpu-affinity.sh hpcat -c --no-banner
 
 ![HPCAT Bardpeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-bardpeak-example.png?raw=true)
 
 
 ### Exascale Compute Blade [Intel GPUs Max 1550] nodes:
 
-    MPICH_OFI_NIC_POLICY=NUMA srun -p ecb -N 2 --tasks-per-node=12 -c 8 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
+    MPICH_OFI_NIC_POLICY=NUMA srun -p ecb -N 2 --tasks-per-node=12 -c 8 --hint=nomultithread ./gpu-affinity.sh hpcat -c --no-banner
 
 ![HPCAT ECB](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-ecb-example.png?raw=true)
 
 
 ### Grizzlypeak Blade [NVIDIA GPUs A100] nodes:
 
-    MPICH_OFI_NIC_POLICY=NUMA srun -p griz512 -N 2 --tasks-per-node=4 -c 16 --hint=nomultithread --pty ./gpu-affinity.sh bin/hpcat --no-banner
+    MPICH_OFI_NIC_POLICY=NUMA srun -p griz512 -N 2 --tasks-per-node=4 -c 16 --hint=nomultithread ./gpu-affinity.sh hpcat -c --no-banner
 
 ![HPCAT Grizzlypeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-grizzlypeak-example.png?raw=true)
 

@@ -56,7 +56,7 @@
     SC_DIR=$(dirname $(readlink -f "${BASH_SOURCE[0]}")) # Retrieve script path
     SC_NAME=$(basename ${0})                             # Retrieve name of the script
     BUILD_DIR="${SC_DIR}/build"                          # Where to build sources
-    INSTALL_DIR="${SC_DIR}/bin"                          # Where to install (default)
+    INSTALL_DIR="${SC_DIR}/install"                      # Where to install (default)
 
 
 ##----[ ERRORS ]--------------------------------------------------------------##
@@ -203,7 +203,7 @@ clean:
 
 distclean:
 	@rm -rf ${BUILD_DIR}
-	@rm -rf ${SC_DIR}/bin
+	@rm -rf ${INSTALL_DIR}
 	@rm ${SC_DIR}/Makefile
 EOF
     }
