@@ -33,6 +33,7 @@ FILE(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_VERSION}"
         "}\n"
         "set HPCAT_DIR [file normalize [file dirname [file normalize \${ModulesCurrentModulefile})]]/../../..]\n"
         "setenv HPCAT_VERSION \"${PROJECT_VERSION}\"\n"
+        "prepend-path MANPATH \"$HPCAT_DIR/share/man\"\n"
         "prepend-path PATH \"$HPCAT_DIR/bin\"\n")
 
 # Install Module file

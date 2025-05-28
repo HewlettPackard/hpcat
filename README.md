@@ -133,6 +133,9 @@ Arguments
         --usage                Give a short usage message
     -V, --version              Print program version
 
+To obtain this list, use the `--help` option.
+For additional information, please refer to the man page.
+
 
 Examples
 --------

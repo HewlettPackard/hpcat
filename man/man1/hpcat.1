@@ -1,0 +1,124 @@
+.TH HPCAT 1 "May 2025" "HPC Affinity Tracker" "User Commands"
+.SH NAME
+hpcat \- visualize resource affinity and topology on HPC systems
+.SH SYNOPSIS
+.B hpcat
+.RI [ OPTIONS ]
+
+.SH DESCRIPTION
+.B HPC Affinity Tracker (HPCAT)
+provides a comprehensive visualization of system topology and resource affinities
+tailored for High Performance Computing (HPC) applications. It displays relationships between
+NUMA nodes, CPU cores, hardware threads, network interfaces, and GPU devices.
+
+A key feature of this application is its use of dynamically linked modules to
+retrieve information about system accelerators. This design allows a single binary
+to run seamlessly across different cluster partitions (regardless of whether
+accelerators are present) making it easier to deploy and maintain a consistent
+user experience across the entire HPC system.
+
+It reports runtime affinities for:
+
+.TP
+\fB* Fabric group ID\fR (cross-group communication cost; currently supports HPE Slingshot with Dragonfly topology)
+.TP
+\fB* MPI\fR tasks
+.TP
+\fB* OpenMP\fR threads (enabled when \fBOMP_NUM_THREADS\fP is set)
+.TP
+\fB* Accelerators\fR (AMD, Intel, or NVIDIA GPUs)
+.TP
+\fB* Network Interface Cards\fR (NICs; with Cray MPICH from 2 nodes onward)
+.TP
+
+The default output is a human-readable condensed table like the following:
+.EX
+╭──────────┬─────────┬──────┬─────────────────────────────────────┬────────────────────────┬──────────────────╮
+│  FABRIC  │    HOST │  MPI │                 CPU                 │      ACCELERATORS      │     NETWORK      │
+│ GROUP ID │  (NODE) │ RANK │ LOGICAL PROC │ PHYSICAL CORE │ NUMA │ ID │ PCIE ADDR. │ NUMA │ INTERFACE │ NUMA │
+├──────────┼─────────┼──────┼──────────────┼───────────────┼──────┼────┼────────────┼──────┼───────────┼──────┤
+│       35 │ node031 │      │              │               │      │    │            │      │           │      │
+│          │         │    0 │          1-7 │           1-7 │    0 │  4 │     [0:d1] │    0 │      cxi2 │    0 │
+│          │         │    1 │         9-15 │          9-15 │    0 │  5 │     [0:d6] │    0 │      cxi2 │    0 │
+│          │         │    2 │        17-23 │         17-23 │    1 │  2 │     [0:c9] │    1 │      cxi1 │    1 │
+│          │         │    3 │        25-31 │         25-31 │    1 │  3 │     [0:ce] │    1 │      cxi1 │    1 │
+├──────────┼─────────┼──────┼──────────────┼───────────────┼──────┼────┼────────────┼──────┼───────────┼──────┤
+│       35 │ node032 │      │              │               │      │    │            │      │           │      │
+│          │         │    4 │          1-7 │           1-7 │    0 │  4 │     [0:d1] │    0 │      cxi2 │    0 │
+│          │         │    5 │         9-15 │          9-15 │    0 │  5 │     [0:d6] │    0 │      cxi2 │    0 │
+│          │         │    6 │        17-23 │         17-23 │    1 │  2 │     [0:c9] │    1 │      cxi1 │    1 │
+│          │         │    7 │        25-31 │         25-31 │    1 │  3 │     [0:ce] │    1 │      cxi1 │    1 │
+╰──────────┴─────────┴──────┴──────────────┴───────────────┴──────┴────┴────────────┴──────┴───────────┴──────╯
+.EE
+
+.TP
+YAML format is also available.
+
+.SH OPTIONS
+.TP
+.BR -c ", " --enable-color-dark
+Use color output optimized for dark terminal backgrounds.
+.TP
+.BR --enable-color-light
+Use color output optimized for light terminal backgrounds.
+.TP
+.BR --disable-accel
+Disable GPU affinity display.
+.TP
+.BR --disable-fabric
+Disable fabric group ID display.
+.TP
+.BR --disable-nic
+Disable network interface affinity display.
+.TP
+.BR --disable-omp
+Disable OpenMP thread affinity display.
+.TP
+.BR --enable-omp
+Enable OpenMP thread affinity display.
+.TP
+.BR --no-banner
+Suppress header and footer in the output.
+.TP
+.BR -v ", " --verbose
+Enable verbose output.
+.TP
+.BR -y ", " --yaml
+Enable YAML output format.
+.TP
+.BR -? ", " --help
+Display help message.
+.TP
+.BR --usage
+Show short usage message.
+.TP
+.BR -V ", " --version
+Display program version.
+
+.SH USAGE
+To run
+.B HPCAT
+in an HPC environment, it should be launched similarly to your target application to preserve scheduling and binding context.
+
+.TP
+For example, in Slurm:
+
+.EX
+SLURM_ARGS="-N 2 -n 16 -c 16 --hint=nomultithread"
+srun $SLURM_ARGS hpcat
+srun $SLURM_ARGS <application>
+.EE
+
+.SH SCALABILITY
+.B HPCAT
+is lightweight and scales efficiently. Most time is spent initializing system libraries and rendering output. The tool has been tested on systems with over 2,000 MPI ranks across 256 nodes.
+
+.SH AUTHOR
+Jean-Yves Vet (HPE), initial manual page by Kurt Lust (LUMI consortium)
+
+.SH SEE ALSO
+hwloc(1), mpirun(1), srun(1)
+
+.SH BUGS
+Report issues at:
+https://github.com/HewlettPackard/hpcat/issues

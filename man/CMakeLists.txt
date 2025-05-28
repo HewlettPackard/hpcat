@@ -1,0 +1,2 @@
+# Install man page
+INSTALL(FILES "${CMAKE_CURRENT_SOURCE_DIR}/man1/hpcat.1" DESTINATION "${CMAKE_INSTALL_PREFIX}/share/man/man1")
