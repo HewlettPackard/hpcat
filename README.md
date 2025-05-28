@@ -62,13 +62,15 @@ Dependencies
 Installation
 ------------
 
-**HPCAT** uses git submodules and CMake with a configure wrapper.
+**HPCAT** uses Git submodules and CMake, along with a wrapper script that simplifies
+configuration and emulates the behavior of autotools. To build the project,
+follow these steps:
 
-    git submodule update --init --recursive
+    git clone --recurse-submodules https://github.com/HewlettPackard/hpcat.git
+    cd hpcat
     ./configure
-    make
+    make -j 10
     make install
-
 
 > [!IMPORTANT]
 > GPU modules are automatically built when the proper libraries are found. But:
@@ -76,27 +78,27 @@ Installation
 > * For Intel GPU module, `ONEAPI_ROOT` environment variable should be set
 > (`source /opt/intel/oneapi/setvars.sh` can be used to set it).
 
-
 > [!CAUTION]
 > The tool will be installed in the *install* subdirectory by default. You may want
 > to use  `./configure --prefix=<destination_path>` to define your own destination
 > path (or directly use CMake and not the configure wrapper).
 > If you decide to move the tool to a different directory, make sure that the
-> dynamic library modules (in <destination_path>/lib) are also moved.
+> dynamic library modules (in `<destination_path>/lib`) are also moved.
 > Otherwise, the module(s) will be ignored.
 
-
 > [!TIP]
-> Compilation of each GPU module can also be skipped (check `./configure --help`).
+> * You can skip compilation of individual GPU modules using flags like `--disable-gpu-amd`, `--disable-gpu-intel`, or `--disable-gpu-nvidia`.
+> * To specify a different compiler, set the `CC` environment variable before running the configuration script (e.g., `CC=<path_to_mpicc> ./configure`).
+> * Run `./configure --help` for a full list of available options.
 
 
 Usage
 -----
 
-For your convenience, a module file is installed to facilitate quick access to **HPCAT**.
-To use it, please follow these steps:
+For your convenience, a module file is installed to enable quick access to **HPCAT**.
+To use it, please follow these steps (adjust the path if a custom installation prefix was used):
 
-    module use <destination_path>/share/modulefiles
+    module use install/share/modulefiles
     module load hpcat
 
 
