@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [v0.8] - 2025-05-28
+
+### Added
+
+- Introduced a color modification feature for dark and light terminal themes.
+- Added a module file for easy modification of environment variables and tool execution.
+- Included a man page for improved user guidance. Acknowledgments to Kurt Lust for the initial version.
+
+### Changed
+
+- Disabled automatic color detection; no color will be used by default.
+- Enhanced documentation by revising the usage and build sections for better clarity.
+- Refactored installation paths to separate binary and library subdirectories.
+
+### Fixed
+
+- Simplified the code by retrieving MAC addresses for the Slingshot Dragonfly group without using sockets.
+
+
 ## [v0.7] - 2025-04-29
 
 ### Added
@@ -67,6 +86,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Rely on the search path to check libnvidia-ml and libamdhip64 availabilities.
 - Auto accelerator disabling: now counts all visible accelerators (allreduce) and disables the column if zero.
 
+[v0.8]: https://github.com/HewlettPackard/hpcat/compare/v0.7...v0.8
 [v0.7]: https://github.com/HewlettPackard/hpcat/compare/v0.6...v0.7
 [v0.6]: https://github.com/HewlettPackard/hpcat/compare/v0.5...v0.6
 [v0.5]: https://github.com/HewlettPackard/hpcat/compare/v0.4...v0.5
