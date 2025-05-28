@@ -1,9 +1,14 @@
-![HPCAT](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat.png?raw=true)
+<div align="center">
 
-**HPCAT** provides a comprehensive visualization of system topology and resource
-affinities tailored for High Performance Computing (HPC) applications. It highlights
-the relationships between **NUMA nodes**, **CPU cores**, **Hardware threads**,
-**Network interfaces** and **GPU devices**.
+![HPCAT](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat.png?raw=true)
+![GitHub Tag](https://img.shields.io/github/v/tag/HewlettPackard/hpcat?style=for-the-badge&label=version&color=0xe0af48)
+
+</div>
+
+**HPC Affinity Tracker** (**HPCAT**) provides a comprehensive visualization of
+system topology and resource affinities tailored for High Performance Computing
+(HPC) applications. It highlights the relationships between **NUMA nodes**,
+**CPU cores**, **Hardware threads**, **Network interfaces** and **GPU devices**.
 
 It reports key runtime affinities, including:
 
@@ -39,6 +44,7 @@ Table of Contents
    - [GPU nodes (Intel Max 1550)](#exascale-compute-blade-intel-gpus-max-1550-nodes)
    - [GPU nodes (NVIDIA A100)](#grizzlypeak-blade-nvidia-gpus-a100-nodes)
 1. [Scalability](#scalability)
+1. [Changelog](#changelog)
 1. [Future Work](#future-work)
 
 
@@ -131,28 +137,28 @@ Arguments
 Examples
 --------
 
-### Antero [AMD CPUs EPYC Genoa] nodes:
+### Antero `[AMD CPUs EPYC Genoa]` nodes:
 
     OMP_NUM_THREADS=2 srun -p antero -N 2 --tasks-per-node=8 -c 24 --hint=nomultithread hpcat -c --no-banner
 
 ![HPCAT Antero](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-antero-example.png?raw=true)
 
 
-### Bardpeak [AMD GPUs Instinct MI250X] nodes:
+### Bardpeak `[AMD GPUs Instinct MI250X]` nodes:
 
     MPICH_OFI_NIC_POLICY=NUMA srun -p bardpeak -N 2 --tasks-per-node=8 -c 8 --hint=nomultithread ./gpu-affinity.sh hpcat -c --no-banner
 
 ![HPCAT Bardpeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-bardpeak-example.png?raw=true)
 
 
-### Exascale Compute Blade [Intel GPUs Max 1550] nodes:
+### Exascale Compute Blade `[Intel GPUs Max 1550]` nodes:
 
     MPICH_OFI_NIC_POLICY=NUMA srun -p ecb -N 2 --tasks-per-node=12 -c 8 --hint=nomultithread ./gpu-affinity.sh hpcat -c --no-banner
 
 ![HPCAT ECB](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-ecb-example.png?raw=true)
 
 
-### Grizzlypeak Blade [NVIDIA GPUs A100] nodes:
+### Grizzlypeak Blade `[NVIDIA GPUs A100]` nodes:
 
     MPICH_OFI_NIC_POLICY=NUMA srun -p griz512 -N 2 --tasks-per-node=4 -c 16 --hint=nomultithread ./gpu-affinity.sh hpcat -c --no-banner
 
@@ -173,6 +179,12 @@ ranks per node, with one GPU (GCD) assigned to each rank. At 256 nodes, a total
 of 2048 MPI tasks are launched. Colors are disabled in this run:
 
 ![Scalability up to 256 nodes](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-scalability.png?raw=true)
+
+
+Changelog
+---------
+
+For a detailed list of changes, please see the [CHANGELOG.md](CHANGELOG.md).
 
 
 Future Work
