@@ -20,44 +20,14 @@
 * OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************
 * hpcat: display NUMA and CPU affinities in the context of HPC applications
-* settings.h: Application specific settings and user defined parameters.
+* version.h.in: template file for propagating the HPCAT version from CMake.
 *
 * URL       https://github.com/HewlettPackard/hpcat
 ******************************************************************************/
 
-#ifndef HPCAT_SETTINGS_H
-#define HPCAT_SETTINGS_H
+#ifndef HPCAT_VERSION_H
+#define HPCAT_VERSION_H
 
-#include <stdbool.h>
-#include "version.h"
+#define HPCAT_VERSION "@PROJECT_VERSION@"
 
-#define HPCAT_CONTACT "https://github.com/HewlettPackard/hpcat"
-
-typedef enum OutputType
-{
-    STDOUT,
-    YAML
-} OutputType_t;
-
-typedef enum ColorType
-{
-    NOCOLOR,
-    DARK_BG,
-    LIGHT_BG
-} ColorType_t;
-
-typedef struct HpcatSettings
-{
-    bool          enable_accel;
-    bool          enable_nic;
-    bool          enable_fabric;
-    bool          enable_omp;
-    bool          enable_banner;
-    bool          enable_verbose;
-    ColorType_t   color_type;
-    OutputType_t  output_type;
-} HpcatSettings_t;
-
-void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings);
-
-#endif /* HPCAT_SETTINGS_H */
+#endif /* HPCAT_VERSION_H */

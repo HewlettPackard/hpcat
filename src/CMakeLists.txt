@@ -2,6 +2,12 @@ ADD_SUBDIRECTORY(amd)
 ADD_SUBDIRECTORY(intel)
 ADD_SUBDIRECTORY(nvidia)
 
+CONFIGURE_FILE(
+    "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/version.h"
+    @ONLY
+)
+
 FIND_PACKAGE(MPI REQUIRED)
 
 # Enable OpenMP
@@ -10,7 +16,7 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
 # Using libfort without string literal
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wno-format-security")
 
-INCLUDE_DIRECTORIES(SYSTEM ${MPI_INCLUDE_PATH} ${HWLOC_INSTALL_PATH}/include ${CMAKE_CURRENT_SOURCE_DIR}/../submodules/libfort/lib)
+INCLUDE_DIRECTORIES(SYSTEM ${MPI_INCLUDE_PATH} ${HWLOC_INSTALL_PATH}/include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../submodules/libfort/lib)
 ADD_EXECUTABLE(hpcat hpcat.c output.c settings.c ${CMAKE_CURRENT_SOURCE_DIR}/../submodules/libfort/lib/fort.c)
 ADD_DEPENDENCIES(hpcat hwloc)
 
