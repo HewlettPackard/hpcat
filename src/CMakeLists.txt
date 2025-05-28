@@ -23,3 +23,17 @@ ADD_DEPENDENCIES(hpcat hwloc)
 TARGET_LINK_LIBRARIES(hpcat dl ${MPI_C_LIBRARIES} ${HWLOC_INSTALL_PATH}/lib/libhwloc.a)
 
 INSTALL(TARGETS hpcat DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+
+# Create the Module file content
+FILE(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_VERSION}"
+        "#%Module1.0"
+        "module-whatis \"HPCAT (version ${PROJECT_VERSION})\"\n"
+        "proc ModulesHelp { } {\n"
+        "    puts stderr \"Loads HPCAT v${PROJECT_VERSION}\"\n"
+        "}\n"
+        "set HPCAT_DIR [file normalize [file dirname [file normalize \${ModulesCurrentModulefile})]]/../../..]\n"
+        "setenv HPCAT_VERSION \"${PROJECT_VERSION}\"\n"
+        "prepend-path PATH \"$HPCAT_DIR/bin\"\n")
+
+# Install Module file
+INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_VERSION}" DESTINATION "${CMAKE_INSTALL_PREFIX}/share/modulefiles/hpcat")

@@ -83,8 +83,16 @@ Installation
 > [!TIP]
 > Compilation of each GPU module can also be skipped (check `./configure --help`).
 
+
 Usage
 -----
+
+For your convenience, a module file is installed to facilitate quick access to **HPCAT**.
+To use it, please follow these steps:
+
+    module use <destination_path>/share/modulefiles
+    module load hpcat
+
 
 **HPCAT** should be launched in the same manner as your application. With Slurm,
 you can add an additional srun command using the same arguments to match the
@@ -96,7 +104,7 @@ A convenient approach is to use a variable to share the job scheduler arguments.
 For example, with Slurm in your batch script:
 
     SLURM_ARGS="-N 2 -n 16 -c 16 --hint=nomultithread"
-    srun $SLURM_ARGS bin/hpcat
+    srun $SLURM_ARGS hpcat
     srun $SLURM_ARGS <app>
 
 
