@@ -109,6 +109,14 @@ srun $SLURM_ARGS hpcat
 srun $SLURM_ARGS <application>
 .EE
 
+.SH ENVIRONMENT
+When using Slingshot with Cray MPICH, setting the environment variable
+.B MPICH_OFI_NIC_POLICY
+to
+.B GPU
+enables the tool to emulate NIC affinity to match GPU NUMA affinity. This Cray MPICH feature requires certain
+libraries that are not linked during compilation to maintain modularity.
+
 .SH SCALABILITY
 .B HPCAT
 is lightweight and scales efficiently. Most time is spent initializing system libraries and rendering output. The tool has been tested on systems with over 2,000 MPI ranks across 256 nodes.

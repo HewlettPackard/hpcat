@@ -210,6 +210,39 @@ int hpcat_accel_visible_bitmap(hwloc_bitmap_t bitmap)
 }
 
 /**
+ * Retrieve the NUMA affinity of the first GPU
+ *
+ * @return                      Success: NUMA node, Error: -1
+ */
+int hpcat_accel_numa_first(void)
+{
+    const int dev_count = hpcat_accel_count();
+    if (dev_count <= 0)
+        return -1;
+
+    zes_device_handle_t dev = ze_devices[0];
+    zes_device_properties_t dev_props;
+    dev_props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
+
+    if ((zesDeviceGetProperties(dev, &dev_props) != ZE_RESULT_SUCCESS) ||
+        !strstr(dev_props.brandName, "Intel"))
+            return -1;
+
+    /* Retrieving the PCIe address */
+    zes_pci_properties_t pci_prop;
+    ze_result_t ret = zesDevicePciGetProperties(dev, &pci_prop);
+    if (ret != ZE_RESULT_SUCCESS)
+    {
+        const char *estring;
+        zeDriverGetLastErrorDescription(ze_drivers[0], &estring);
+        printf("Failed to get PCI info for device 0: %s\n", estring);
+        return -1;
+    }
+
+    return get_device_numa_affinity(pci_prop.address.domain, pci_prop.address.bus);
+}
+
+/**
  * Retrieve a bitmap representing NUMA affinities of all detected accelerators
  *
  * @param   numa_affinity[out]  Preallocated hwloc bitmap

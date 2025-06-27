@@ -178,6 +178,37 @@ int hpcat_accel_visible_bitmap(hwloc_bitmap_t bitmap)
 }
 
 /**
+ * Retrieve the NUMA affinity of the first GPU
+ *
+ * @return                      Success: NUMA node, Error: -1
+ */
+int hpcat_accel_numa_first(void)
+{
+    const int dev_count = hpcat_accel_count();
+    if (dev_count <= 0)
+        return -1;
+
+    nvmlDevice_t device;
+    nvmlPciInfo_t pci;
+
+    nvmlReturn_t res = nvmlDeviceGetHandleByIndex(ids[0], &device);
+    if (NVML_SUCCESS != res)
+    {
+        printf("Failed to get handle for device 0: %s\n", nvmlErrorString(res));
+        return -1;
+    }
+
+    res = nvmlDeviceGetPciInfo(device, &pci);
+    if (NVML_SUCCESS != res)
+    {
+        printf("Failed to get PCI info for device 0: %s\n", nvmlErrorString(res));
+        return -1;
+    }
+
+    return get_device_numa_affinity(pci.domain, pci.bus);
+}
+
+/**
  * Retrieve a bitmap representing NUMA affinities of all detected accelerators
  *
  * @param   numa_affinity[out]  Preallocated hwloc bitmap
@@ -209,7 +240,8 @@ int hpcat_accel_numa_bitmap(hwloc_bitmap_t numa_affinity)
         }
 
         res = nvmlDeviceGetPciInfo(device, &pci);
-        if (NVML_SUCCESS != res) {
+        if (NVML_SUCCESS != res)
+        {
             printf("Failed to get PCI info for device %u: %s\n", ids[i], nvmlErrorString(res));
             return -1;
         }

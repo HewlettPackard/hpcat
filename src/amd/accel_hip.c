@@ -96,6 +96,24 @@ int hpcat_accel_visible_bitmap(hwloc_bitmap_t bitmap)
 }
 
 /**
+ * Retrieve the NUMA affinity of the first GPU
+ *
+ * @return                      Success: NUMA node, Error: -1
+ */
+int hpcat_accel_numa_first(void)
+{
+    const int dev_count = hpcat_accel_count();
+    if (dev_count <= 0)
+        return -1;
+
+    struct hipDeviceProp_t prop;
+    if (hipGetDeviceProperties(&prop, 0) != hipSuccess)
+        return -1;
+
+    return get_device_numa_affinity(prop.pciDomainID, prop.pciBusID);
+}
+
+/**
  * Retrieve a bitmap representing NUMA affinities of all detected accelerators
  *
  * @param   numa_affinity[out]  Preallocated hwloc bitmap

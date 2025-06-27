@@ -43,6 +43,7 @@ Table of Contents
    - [GPU nodes (AMD Instinct MI250X)](#bardpeak-amd-gpus-instinct-mi250x-nodes)
    - [GPU nodes (Intel Max 1550)](#exascale-compute-blade-intel-gpus-max-1550-nodes)
    - [GPU nodes (NVIDIA A100)](#grizzlypeak-blade-nvidia-gpus-a100-nodes)
+1. [Environment](#environment)
 1. [Scalability](#scalability)
 1. [Changelog](#changelog)
 1. [Future Work](#future-work)
@@ -168,6 +169,17 @@ Examples
     MPICH_OFI_NIC_POLICY=NUMA srun -p griz512 -N 2 --tasks-per-node=4 -c 16 --hint=nomultithread ./gpu-affinity.sh hpcat -c --no-banner
 
 ![HPCAT Grizzlypeak](https://github.com/HewlettPackard/hpcat/blob/main/img/hpcat-grizzlypeak-example.png?raw=true)
+
+
+Environment
+-----------
+
+> [!IMPORTANT]
+> When using Slingshot with Cray MPICH, the feature that aligns NIC affinity with
+> GPU affinity is not natively supported. This is because the Cray MPICH feature
+> relies on specific libraries that are not linked during compilation to preserve
+> the modularity of `HPCAT`. However, setting the environment variable `MPICH_OFI_NIC_POLICY`
+> to `GPU` makes the tool emulate NIC affinity to match GPU NUMA affinity.
 
 
 Scalability

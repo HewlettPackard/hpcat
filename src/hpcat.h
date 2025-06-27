@@ -84,6 +84,7 @@ typedef struct
     bool          is_first_node_rank;
     bool          is_first_rank;
     bool          is_last_rank;
+    bool          is_mpich_ofi_nic_policy_gpu;
     Affinity      affinity;
     char          hostname[HOST_NAME_MAX];
     int           fabric_group_id;

@@ -35,6 +35,7 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <netpacket/packet.h>
+#include <dirent.h>
 
 #include "hpcat.h"
 #include "common.h"
@@ -80,6 +81,68 @@ static void serialize_cpu_bitmap(CPUBitmap *bitmap, hwloc_bitmap_t tmp)
 
     if (hwloc_bitmap_to_ulongs(tmp, bitmap->num_ulongs, bitmap->ulongs) != 0)
         FATAL("Error: unable to convert cpu bitmap to ulongs. Exiting.\n");
+}
+
+static void emulate_mpich_ofi_nic_policy_gpu(Hpcat *hpcat, Task *task, void* dlopen_handle)
+{
+    /* XXX: When using Slingshot with Cray MPICH, setting the environment variable
+     * MPICH_OFI_NIC_POLICY to GPU enables this function to emulate NIC affinity
+     * to match GPU NUMA affinity. This Cray MPICH feature requires certain
+     * libraries that are not linked during compilation to maintain modularity.
+     */
+
+    const bool nic_is_cxi = (strstr(task->nic.name, "cxi") != NULL);
+
+    /* Only display NIC locality display is emulation is possible */
+    task->nic.numa_affinity = -1;
+    task->nic.name[0] = '\0';
+
+    /* Ensure a Slingshot interface is used, otherwise skip emulation */
+    if (!nic_is_cxi)
+        return;
+
+    /* Get the NUMA locality of the first GPU */
+    int (*numa_first)(void) = dlsym(dlopen_handle, "hpcat_accel_numa_first");
+    char *error;
+    if ((error = dlerror()) != NULL)
+        FATAL("Error: unable to load hpcat_accel_numa_first: %s. Exiting.\n", error);
+
+    const int gpu_numa = numa_first();
+
+    /* Try now to match the NUMA locality to a Slingshot interface */
+    DIR *dir;
+    struct dirent *entry;
+    char path[PATH_MAX], numa_node_path[PATH_MAX];
+    int nic_numa;
+
+    if ((dir = opendir("/sys/class/net/")) == NULL)
+        FATAL("Error: unable to opendir /sys/class/net. Exiting.\n");
+
+    /* Iterate through each network interface */
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (strstr(entry->d_name, "hsn") == NULL)
+            continue;
+
+        snprintf(path, sizeof(path), "/sys/class/net/%s/device/", entry->d_name);
+        snprintf(numa_node_path, sizeof(numa_node_path), "%s/numa_node", path);
+
+        FILE *numa_file = fopen(numa_node_path, "r");
+        if (numa_file != NULL)
+        {
+            fscanf(numa_file, "%d", &nic_numa);
+            fclose(numa_file);
+        }
+
+        if (nic_numa == gpu_numa)
+        {
+            sprintf(task->nic.name, "cxi%c", entry->d_name[strlen(entry->d_name) - 1]);
+            task->nic.numa_affinity = gpu_numa;
+            break;
+        }
+    }
+
+    closedir(dir);
 }
 
 /**
@@ -223,6 +286,9 @@ void try_get_accel_info(Hpcat *hpcat, Task *task, const char *check_lib, const c
 
     VERBOSE(hpcat, "Verbose: %s module enabled.\n", dyn_module);
 
+    if (task->is_mpich_ofi_nic_policy_gpu)
+         emulate_mpich_ofi_nic_policy_gpu(hpcat, task, handle);
+
 exit:
     dlclose(handle);
     hwloc_bitmap_free(numa_affinity);
@@ -275,6 +341,16 @@ void MPI_Init_verbose(Task *task, int *nargs, char **args[])
     /* sterr will now go to the pipe */
     if (dup2(pipefd[1], fileno(stderr)) == -1)
         FATAL("Error: dup2 unable to duplicate stderr: %s\n", strerror(errno));
+
+    /* XXX: Verify that MPICH_OFI_NIC_POLICY=GPU is disabled (emulated if set),
+     * as this configuration disrupts the modular functionality of the tool.
+     * Ensure that the tool operates correctly without this setting. */
+    char *nic_policy = getenv("MPICH_OFI_NIC_POLICY");
+    if (nic_policy != NULL && strstr(nic_policy, "GPU") != NULL)
+    {
+        unsetenv("MPICH_OFI_NIC_POLICY");
+        task->is_mpich_ofi_nic_policy_gpu = true;
+    }
 
     /* Enabling MPI verbosity */
     setenv("MPICH_OFI_NIC_VERBOSE", "2", 1);
