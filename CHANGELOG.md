@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [v0.9] - 2025-07-05
+
+### Added
+
+- Introduced hints to identify tasks with suboptimal NUMA bindings and affinities
+
+### Fixed
+
+- Emulated MPICH_OFI_NIC_POLICY=GPU to prevent crashes and maintain the tool's modularity
+
+
 ## [v0.8] - 2025-05-28
 
 ### Added
@@ -86,6 +97,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Rely on the search path to check libnvidia-ml and libamdhip64 availabilities.
 - Auto accelerator disabling: now counts all visible accelerators (allreduce) and disables the column if zero.
 
+[v0.9]: https://github.com/HewlettPackard/hpcat/compare/v0.8...v0.9
 [v0.8]: https://github.com/HewlettPackard/hpcat/compare/v0.7...v0.8
 [v0.7]: https://github.com/HewlettPackard/hpcat/compare/v0.6...v0.7
 [v0.6]: https://github.com/HewlettPackard/hpcat/compare/v0.5...v0.6
