@@ -41,6 +41,7 @@
 #include "common.h"
 #include "settings.h"
 #include "output.h"
+#include "hint.h"
 
 #define AMA_GROUP_SHIFTS   11 /* Position of Dragonfly group id in a Slingshot MAC address */
 #define FABRIC_GROUPS_MAX 256
@@ -182,9 +183,9 @@ void get_cpu_numa_affinity(Affinity *affinity)
         FATAL("Error: unable to allocate a hwloc bitmap for NUMA affinity. Exiting.\n");
 
     const int depth_node = hwloc_get_type_depth(topology, HWLOC_OBJ_NUMANODE);
-    const int num_nodes = hwloc_get_nbobjs_by_depth(topology, depth_node);
+    const int total_numa = hwloc_get_nbobjs_by_depth(topology, depth_node);
 
-    for (int i = 0; i < num_nodes; i++)
+    for (int i = 0; i < total_numa; i++)
     {
         hwloc_obj_t node = hwloc_get_obj_by_depth(topology, depth_node, i);
         if (hwloc_bitmap_intersects(hw_thread_affinity, node->cpuset))
@@ -594,6 +595,9 @@ int main(int argc, char* argv[])
     /* Retrieve MPI, OMP and accelerator based details */
     hpcat_init(&hpcat, &task);
 
+    /* Verify the binding and affinity, and determine whether hints should be displayed */
+    hpcat_hint_task_check(&hpcat, &task);
+
     /* Mapping between hostname and ranks */
     char map[hpcat.num_tasks][HOST_NAME_MAX];
     strncpy(map[task.id], task.hostname, HOST_NAME_MAX - 1);
@@ -682,14 +686,16 @@ int main(int argc, char* argv[])
             if (hpcat.settings.enable_omp)
                 hpcat.num_omp_threads += current_task->num_threads;
 
+            hpcat_hint_global_check(&hpcat, current_task);
+
             /* Print task info */
             switch (hpcat.settings.output_type)
             {
                 case STDOUT:
-                    hpcat_display_stdout(&hpcat, &tasks[reordered_ranks[i]]);
+                    hpcat_display_stdout(&hpcat, current_task);
                     break;
                 case YAML:
-                    hpcat_display_yaml(&hpcat, &tasks[reordered_ranks[i]]);
+                    hpcat_display_yaml(&hpcat, current_task);
                     break;
             }
         }

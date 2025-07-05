@@ -60,6 +60,7 @@ static struct argp_option options[] =
     {"disable-nic",        23,  0,         0,  "Don't display Network affinities"},
     {"disable-accel",      24,  0,         0,  "Don't display GPU affinities"},
     {"disable-fabric",     25,  0,         0,  "Don't display fabric group ID"},
+    {"disable-hints",      26,  0,         0,  "Don't display hints"},
     {"no-banner",          31,  0,         0,  "Don't display header/footer"},
     {"verbose",            'v', 0,         0,  "Make the operations talkative"},
     {"yaml",               'y', 0,         0,  "YAML output"},
@@ -90,6 +91,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
             break;
         case  25:
             settings->enable_fabric = false;
+            break;
+        case  26:
+            settings->enable_hints = false;
             break;
         case  31:
             settings->enable_banner = false;
@@ -129,8 +133,9 @@ void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings
 
     hpcat_settings->enable_accel   = true;
     hpcat_settings->enable_banner  = true;
-    hpcat_settings->enable_nic     = true;
     hpcat_settings->enable_fabric  = true;
+    hpcat_settings->enable_hints   = true;
+    hpcat_settings->enable_nic     = true;
     hpcat_settings->enable_verbose = false;
     hpcat_settings->color_type     = NOCOLOR;
 

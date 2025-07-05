@@ -20,45 +20,28 @@
 * OTHER DEALINGS IN THE SOFTWARE.
 ******************************************************************************
 * hpcat: display NUMA and CPU affinities in the context of HPC applications
-* settings.h: Application specific settings and user defined parameters.
+* hints.h: Hint detection and management
 *
 * URL       https://github.com/HewlettPackard/hpcat
 ******************************************************************************/
 
-#ifndef HPCAT_SETTINGS_H
-#define HPCAT_SETTINGS_H
+#ifndef HPCAT_HINT_H
+#define HPCAT_HINT_H
 
-#include <stdbool.h>
-#include "version.h"
+#include "hpcat.h"
 
-#define HPCAT_CONTACT "https://github.com/HewlettPackard/hpcat"
-
-typedef enum OutputType
+typedef enum HintType
 {
-    STDOUT,
-    YAML
-} OutputType_t;
+    HINT_SHARED_CORES = 0,        /* Indicates shared CPU cores between tasks */
+    HINT_MULTIPLE_NUMA_NODES,     /* Multiple NUMA nodes used by a task       */
+    HINT_DIFFERENT_CPU_GPU_NUMA,  /* Different NUMA for CPU and GPU           */
+    HINT_DIFFERENT_CPU_NIC_NUMA,  /* Different NUMA for CPU and NIC           */
+    HINT_DIFFERENT_GPU_NIC_NUMA,  /* Different NUMA for GPU and NIC           */
+    HINT_MAX
+} HintType_t;
 
-typedef enum ColorType
-{
-    NOCOLOR,
-    DARK_BG,
-    LIGHT_BG
-} ColorType_t;
+void hpcat_hint_global_check(Hpcat *hpcat, Task *task);
+void hpcat_hint_task_check(Hpcat *hpcat, Task *task);
+void hpcat_hint_format(char *output_str, const char detected_hints);
 
-typedef struct HpcatSettings
-{
-    bool          enable_accel;
-    bool          enable_banner;
-    bool          enable_fabric;
-    bool          enable_hints;
-    bool          enable_nic;
-    bool          enable_omp;
-    bool          enable_verbose;
-    ColorType_t   color_type;
-    OutputType_t  output_type;
-} HpcatSettings_t;
-
-void hpcat_settings_init(int argc, char *argv[], HpcatSettings_t *hpcat_settings);
-
-#endif /* HPCAT_SETTINGS_H */
+#endif /* HPCAT_HINT_H */

@@ -36,6 +36,7 @@
 #include "output.h"
 #include "common.h"
 #include "settings.h"
+#include "hint.h"
 
 #define STR_MAX      4096
 #define INT_STR_MAX    10
@@ -82,27 +83,34 @@ static void stdout_header(Hpcat *handle)
 
 static void stdout_footer(Hpcat *handle)
 {
-    char omp_str[INT_STR_MAX], fabric_str[INT_STR_MAX], row_str[STR_MAX];
+    char omp_str[INT_STR_MAX], fabric_str[INT_STR_MAX], hints_str[STR_MAX], row_str[STR_MAX];
 
     HpcatSettings_t *settings = &handle->settings;
 
     if (settings->enable_omp)
-        sprintf(omp_str, "%d", handle->num_omp_threads);
+        sprintf(omp_str, "%d|", handle->num_omp_threads);
 
     if (settings->enable_fabric)
         sprintf(fabric_str, "%d|", handle->num_fabric_groups);
 
-    sprintf(row_str, "TOTAL: %s%d|%d|%s", (settings->enable_fabric ? fabric_str : ""),
-                                          handle->num_nodes, handle->num_tasks,
-                                          (settings->enable_omp ? omp_str : ""));
+    if (settings->enable_hints)
+        hpcat_hint_format(hints_str, handle->detected_hints);
+
+    sprintf(row_str, "TOTAL: %s%d|%d|%s%s", (settings->enable_fabric ? fabric_str : ""),
+                                            handle->num_nodes, handle->num_tasks,
+                                            (settings->enable_omp ? omp_str : ""),
+                                            (settings->enable_hints ? hints_str : ""));
 
     ft_printf_ln(table, row_str);
 
     if (settings->color_type != NOCOLOR)
+    {
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR, FT_COLOR_CYAN);
+        ft_set_cell_prop(table, num_rows, start_cpu, FT_CPROP_CONT_FG_COLOR, FT_COLOR_LIGHT_RED);
+    }
 
     ft_set_cell_span(table, num_rows, start_cpu, num_columns - start_cpu);
-    ft_set_cell_prop(table, num_rows, start_cpu, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_CENTER);
+    ft_set_cell_prop(table, num_rows, start_cpu, FT_CPROP_TEXT_ALIGN, FT_ALIGNED_LEFT);
 }
 
 static void stdout_titles(Hpcat *handle)
@@ -443,6 +451,13 @@ void hpcat_display_yaml(Hpcat *handle, Task *task)
 
         if (settings->enable_omp)
             printf("total_omp_threads: %d\n", handle->num_omp_threads);
+
+        if (settings->enable_hints)
+        {
+            char hints_str[STR_MAX];
+            hpcat_hint_format(hints_str, handle->detected_hints);
+            printf("hints: \"%s\"\n", hints_str);
+        }
     }
 
     hwloc_bitmap_free(bitmap);

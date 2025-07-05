@@ -18,8 +18,11 @@ It reports key runtime affinities, including:
 * **Accelerators** (automatically enabled if AMD, Intel or NVIDIA GPUs are detected)
 * **Network Interface Cards (NICs)** (available with *Cray MPICH*, starting from 2 nodes)
 
-The output format is a human-readable, condensed table, but *YAML* is also available
-as an option.
+The output format is a human-readable, condensed table. By default, `HPCAT`
+displays hints in the footer of the tabular output, highlighting detected binding or
+affinity issues that may lead to performance degradation.
+
+*YAML* output is also available as an option.
 
 > [!NOTE]
 > A key feature of this application is its use of dynamically linked modules
@@ -125,6 +128,7 @@ Arguments
     -c, --enable-color-dark    Using colors (dark terminal)
         --disable-accel        Don't display GPU affinities
         --disable-fabric       Don't display fabric group ID
+        --disable-hints        Don't display hints
         --disable-nic          Don't display Network affinities
         --disable-omp          Don't display OpenMP affinities
         --enable-color-light   Using colors (light terminal)

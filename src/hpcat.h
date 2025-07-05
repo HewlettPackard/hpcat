@@ -92,6 +92,7 @@ typedef struct
     int           num_threads;
     Thread        threads[THREADS_MAX];
     Accelerators  accel;
+    char          detected_hints;
 } Task;
 
 typedef struct Hpcat
@@ -102,6 +103,8 @@ typedef struct Hpcat
     int              num_tasks;
     int              num_omp_threads;
     int              id;
+    char             detected_hints;
+    hwloc_bitmap_t   global_cpu_bitmap;
     char             mpi_version[MPI_MAX_LIBRARY_VERSION_STRING];
 } Hpcat;
 
