@@ -40,6 +40,16 @@ static const char * const hint_str[] =
     [HINT_DIFFERENT_GPU_NIC_NUMA]   = "Task(s) have different GPU and NIC NUMA affinities",
 };
 
+static const char *const hint_superscript[] =
+{
+    [HINT_SHARED_CORES]             = "a)",
+    [HINT_MULTIPLE_NUMA_NODES]      = "b)",
+    [HINT_DIFFERENT_CPU_GPU_NUMA]   = "c)",
+    [HINT_DIFFERENT_CPU_NIC_NUMA]   = "d)",
+    [HINT_DIFFERENT_GPU_NIC_NUMA]   = "e)",
+};
+
+
 static inline void hint_set(char *detected_hints, const HintType_t type)
 {
     *detected_hints = SET_BIT(*detected_hints, type);
@@ -48,11 +58,6 @@ static inline void hint_set(char *detected_hints, const HintType_t type)
 static inline bool hint_is_set(const char detected_hints, const HintType_t type)
 {
     return (bool)GET_BIT(detected_hints, type);
-}
-
-static inline bool hint_is_empty(const char detected_hints)
-{
-    return (detected_hints == 0);
 }
 
 static hwloc_bitmap_t alloc_bitmap(void)
@@ -175,9 +180,29 @@ void hpcat_hint_task_check(Hpcat *hpcat, Task *task)
 }
 
 /**
+ * Formats a list of superscripts based on the provided detected hints.
+ *
+ * @param output_str[out]     Pointer to a string that will hold the formatted superscript(s)
+ * @param detected_hints[in]  Bitfield representing all detected hint flags
+*/
+void hpcat_hint_task_superscript(char *output_str, const char detected_hints)
+{
+    output_str[0] = '\0';
+
+    if (hint_is_empty(detected_hints))
+        return;
+
+    strcat(output_str, ">>> ");
+
+    for (int i = 0; i < HINT_MAX; i++)
+        if (hint_is_set(detected_hints, i))
+            strcat(output_str, hint_superscript[i]);
+}
+
+/**
  * Formats a human-readable string based on detected hint flags.
  *
- * @param output_str[out]     Formatted string containing the hint descriptions
+ * @param output_str[out]     Pointer to a string that will contain the hint descriptions
  * @param detected_hints[in]  Bitfield containing all detected hint flags
  */
 void hpcat_hint_format(char *output_str, const char detected_hints)
@@ -194,6 +219,8 @@ void hpcat_hint_format(char *output_str, const char detected_hints)
         if (hint_is_set(detected_hints, i))
         {
             strcat(output_str, "\n");
+            strcat(output_str, hint_superscript[i]);
+            strcat(output_str, " ");
             strcat(output_str, hint_str[i]);
         }
     }

@@ -40,8 +40,14 @@ typedef enum HintType
     HINT_MAX
 } HintType_t;
 
+static inline bool hint_is_empty(const char detected_hints)
+{
+    return (detected_hints == 0);
+}
+
 void hpcat_hint_global_check(Hpcat *hpcat, Task *task);
 void hpcat_hint_task_check(Hpcat *hpcat, Task *task);
+void hpcat_hint_task_superscript(char *output_str, const char detected_hints);
 void hpcat_hint_format(char *output_str, const char detected_hints);
 
 #endif /* HPCAT_HINT_H */

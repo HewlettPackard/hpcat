@@ -190,6 +190,7 @@ static void stdout_task(Hpcat *handle, Task *task)
 {
     HpcatSettings_t *settings = &handle->settings;
     char hw_thread_str[STR_MAX], core_str[STR_MAX], numa_str[STR_MAX], row_str[STR_MAX];
+    char hint_str[STR_MAX] = { 0 };
     char nic_numa_str[STR_MAX] = { 0 }, accel_numa_str[STR_MAX] = { 0 }, accel_visible_str[STR_MAX] = { 0 };
 
     hwloc_bitmap_t bitmap = hwloc_bitmap_alloc();
@@ -211,8 +212,12 @@ static void stdout_task(Hpcat *handle, Task *task)
     if (task->nic.num_nic > 0)
         sprintf(nic_numa_str, "%d", task->nic.numa_affinity);
 
-    sprintf(row_str, "%s|%d|%s%s|%s|%s%s%s%s%s%s%s%s%s%s%s",
+    if (settings->enable_hints)
+        hpcat_hint_task_superscript(hint_str, task->detected_hints);
+
+    sprintf(row_str, "%s%s|%d|%s%s|%s|%s%s%s%s%s%s%s%s%s%s%s",
                                      (settings->enable_fabric ? "|" : ""),
+                                     (settings->enable_hints ? hint_str : ""),
                                      task->id,
                                      (settings->enable_omp ? "---|" : "" ),
                                      hw_thread_str, core_str, numa_str,
@@ -229,9 +234,13 @@ static void stdout_task(Hpcat *handle, Task *task)
     ft_printf_ln(table, row_str);
 
     if (settings->color_type != NOCOLOR)
+    {
         ft_set_cell_prop(table, num_rows, FT_ANY_COLUMN, FT_CPROP_CONT_FG_COLOR,
               (settings->color_type == DARK_BG) ? FT_COLOR_LIGHT_GRAY : FT_COLOR_DARK_GRAY);
 
+        if (!hint_is_empty(task->detected_hints))
+            ft_set_cell_prop(table, num_rows, start_host, FT_CPROP_CONT_FG_COLOR, FT_COLOR_LIGHT_RED);
+    }
     num_rows++;
 }
 
